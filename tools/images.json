@@ -1,11 +1,54 @@
 {
+  "barbell": {
+    "title": "Barbell",
+    "page": "https://www.flickr.com/photos/94822773@N08/8669791068",
+    "url": "https://live.staticflickr.com/8379/8669791068_17d2168188_b.jpg",
+    "w": 1024,
+    "author": "Surge Lifestyle",
+    "license": "CC BY-SA 2.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/2.0/"
+  },
+  "ezbar": {
+    "title": "File:Military press ez-bar 25022008.jpg",
+    "page": "https://commons.wikimedia.org/wiki/File:Military_press_ez-bar_25022008.jpg",
+    "w": 1545,
+    "author": "Richardkiwi",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "dumbbells": {
+    "title": "Bones and Barbells (5)",
+    "page": "https://www.flickr.com/photos/49760791@N07/8055418854",
+    "url": "https://live.staticflickr.com/8309/8055418854_5c994efa16_b.jpg",
+    "w": 683,
+    "author": "Upstate Options Magazine",
+    "license": "CC BY 2.0",
+    "license_url": "https://creativecommons.org/licenses/by/2.0/"
+  },
   "kettlebell": {
-    "title": "File:Kettlebell truebalance romeike.jpg",
-    "page": "https://commons.wikimedia.org/wiki/File:Kettlebell_truebalance_romeike.jpg",
-    "w": 2592,
-    "author": "Detlef Romeike",
-    "license": "CC BY-SA 2.5",
-    "license_url": "https://creativecommons.org/licenses/by-sa/2.5"
+    "title": "Kettlebells",
+    "page": "https://www.flickr.com/photos/27504933@N00/2848737069",
+    "url": "https://live.staticflickr.com/3008/2848737069_349ddb3c58_b.jpg",
+    "w": 1024,
+    "author": "WilsonB",
+    "license": "CC BY-SA 2.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/2.0/"
+  },
+  "bench": {
+    "title": "File:Bench press.jpg",
+    "page": "https://commons.wikimedia.org/wiki/File:Bench_press.jpg",
+    "w": 4032,
+    "author": "SAgbley",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "adjbench": {
+    "title": "File:Incline bench.jpg",
+    "page": "https://commons.wikimedia.org/wiki/File:Incline_bench.jpg",
+    "w": 6016,
+    "author": "Teemeah",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
   },
   "rack": {
     "title": "File:Powerrack.jpg",
@@ -24,12 +67,13 @@
     "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en"
   },
   "legpress": {
-    "title": "File:Leg press machine.jpg",
-    "page": "https://commons.wikimedia.org/wiki/File:Leg_press_machine.jpg",
-    "w": 4512,
-    "author": "Teemeah",
-    "license": "CC BY-SA 4.0",
-    "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
+    "title": "leg-press-ortus-fitnessjpg",
+    "page": "https://www.flickr.com/photos/58504556@N07/44246985224",
+    "url": "https://live.staticflickr.com/1966/44246985224_c1c59c65ae_b.jpg",
+    "w": 1024,
+    "author": "ORTUS FITNESS",
+    "license": "CC BY 2.0",
+    "license_url": "https://creativecommons.org/licenses/by/2.0/"
   },
   "hack": {
     "title": "File:HackSquatMachineExercise.JPG",
@@ -45,33 +89,32 @@
       1
     ]
   },
+  "legext": {
+    "title": "MT3206 Seated Leg Extension 48 from Haswell commercial gym equipment",
+    "page": "https://www.flickr.com/photos/127311295@N06/41089295535",
+    "url": "https://live.staticflickr.com/980/41089295535_453e763ffd_b.jpg",
+    "w": 1024,
+    "author": "haswell.fitness Equipment from China",
+    "license": "CC BY-SA 2.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/2.0/"
+  },
   "legcurl": {
-    "title": "File:LyingLegCurlMachineExercise.JPG",
-    "page": "https://commons.wikimedia.org/wiki/File:LyingLegCurlMachineExercise.JPG",
-    "w": 768,
-    "author": "George Stepanek",
-    "license": "CC BY-SA 3.0",
-    "license_url": "http://creativecommons.org/licenses/by-sa/3.0/",
-    "crop": [
-      0,
-      0,
-      0.5,
-      1
-    ]
+    "title": "MT2205 Prone leg curl from haswell fitness",
+    "page": "https://www.flickr.com/photos/127311295@N06/36286460443",
+    "url": "https://live.staticflickr.com/4401/36286460443_3590d974e1_b.jpg",
+    "w": 1024,
+    "author": "haswell.fitness Equipment from China",
+    "license": "CC BY-SA 2.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/2.0/"
   },
   "calf": {
-    "title": "File:SeatedCalfRaiseMachineExercise.JPG",
-    "page": "https://commons.wikimedia.org/wiki/File:SeatedCalfRaiseMachineExercise.JPG",
-    "w": 640,
-    "author": "George Stepanek",
-    "license": "CC BY-SA 3.0",
-    "license_url": "http://creativecommons.org/licenses/by-sa/3.0/",
-    "crop": [
-      0,
-      0,
-      0.5,
-      1
-    ]
+    "title": "Seated Calf Raise",
+    "page": "https://www.flickr.com/photos/29694550@N06/19507914228",
+    "url": "https://live.staticflickr.com/539/19507914228_f699140975.jpg",
+    "w": 500,
+    "author": "DakilAuctioneers",
+    "license": "CC BY 2.0",
+    "license_url": "https://creativecommons.org/licenses/by/2.0/"
   },
   "abductor": {
     "title": "File:Hip abductor machine.jpg",
@@ -97,6 +140,24 @@
     "license": "CC0",
     "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en"
   },
+  "cablerow": {
+    "title": "onefatman seated row",
+    "page": "https://www.flickr.com/photos/86175259@N00/2367810978",
+    "url": "https://live.staticflickr.com/3209/2367810978_8b0442c701_b.jpg",
+    "w": 1024,
+    "author": "One-Fat-Man",
+    "license": "CC BY 2.0",
+    "license_url": "https://creativecommons.org/licenses/by/2.0/"
+  },
+  "tbar": {
+    "title": "Landmine Bent-Over Rows",
+    "page": "https://www.flickr.com/photos/121183998@N08/43839328821",
+    "url": "https://live.staticflickr.com/1831/43839328821_1744c225c9_b.jpg",
+    "w": 1024,
+    "author": "personaltrainertoronto",
+    "license": "CC BY 2.0",
+    "license_url": "https://creativecommons.org/licenses/by/2.0/"
+  },
   "pullupbar": {
     "title": "File:Pull up bar stand.jpg",
     "page": "https://commons.wikimedia.org/wiki/File:Pull_up_bar_stand.jpg",
@@ -106,12 +167,13 @@
     "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
   },
   "chestpress": {
-    "title": "File:Girl doing chest press machine exercise.jpg",
-    "page": "https://commons.wikimedia.org/wiki/File:Girl_doing_chest_press_machine_exercise.jpg",
-    "w": 6000,
-    "author": "Tyler Read",
+    "title": "Girl doing chest press machine exercise",
+    "page": "https://www.flickr.com/photos/182613284@N02/48833754218",
+    "url": "https://live.staticflickr.com/65535/48833754218_d578a44e33_b.jpg",
+    "w": 1024,
+    "author": "PTPioneer",
     "license": "CC BY 2.0",
-    "license_url": "https://creativecommons.org/licenses/by/2.0"
+    "license_url": "https://creativecommons.org/licenses/by/2.0/"
   },
   "pecdeck": {
     "title": "File:Pec deck Fly.jpg",
@@ -120,6 +182,15 @@
     "author": "Aliva Sahoo",
     "license": "CC BY-SA 4.0",
     "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "shoulderpress": {
+    "title": "MT3103 Seated Shoulder Press 11 from Haswell commercial gym equipment",
+    "page": "https://www.flickr.com/photos/127311295@N06/27120022627",
+    "url": "https://live.staticflickr.com/974/27120022627_897c04394a_b.jpg",
+    "w": 1024,
+    "author": "haswell.fitness Equipment from China",
+    "license": "CC BY-SA 2.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/2.0/"
   },
   "crossover": {
     "title": "File:Chest flies with cable machine - cable crossover flies.jpg",
@@ -137,13 +208,23 @@
     "license": "CC BY-SA 4.0",
     "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
   },
+  "preacher": {
+    "title": "Drowsy Curl",
+    "page": "https://www.flickr.com/photos/30261128@N04/54937737485",
+    "url": "https://live.staticflickr.com/65535/54937737485_274d67fe76_b.jpg",
+    "w": 1024,
+    "author": "licornenoir",
+    "license": "Public Domain Mark 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/mark/1.0/"
+  },
   "captain": {
-    "title": "File:Dip and pull-up machine.jpg",
-    "page": "https://commons.wikimedia.org/wiki/File:Dip_and_pull-up_machine.jpg",
-    "w": 4512,
-    "author": "Teemeah",
-    "license": "CC BY-SA 4.0",
-    "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
+    "title": "Chin/Dip Station converted for using PowerRings",
+    "page": "https://www.flickr.com/photos/21569074@N00/3060550012",
+    "url": "https://live.staticflickr.com/3229/3060550012_ccf29be892_b.jpg",
+    "w": 768,
+    "author": "bodycoach2",
+    "license": "CC BY 2.0",
+    "license_url": "https://creativecommons.org/licenses/by/2.0/"
   },
   "treadmill": {
     "title": "File:2011 Tulane University - working out on treadmills at the Reily Center.jpg",

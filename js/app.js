@@ -1087,7 +1087,7 @@ function renderEditProfile() {
     <div class="field"><label>Рост</label>${stepper('ed.height', d.height, 'см')}</div>
     <div class="field"><label>Вес</label>${stepper('ed.weight', d.weight, 'кг', 0.5)}</div>
     <div class="field"><label>Цель</label><div class="chips">${Object.entries(GOALS).map(([k, g]) => `<button class="chip ${d.goal === k ? 'on' : ''}" data-act="edSet" data-k="goal" data-v="${k}">${g.title}</button>`).join('')}</div>
-      ${d.goal !== 'maintain' ? `<input class="input" style="margin-top:10px" type="number" inputmode="decimal" placeholder="Желаемый вес, кг (необязательно)" value="${esc(d.targetWeight)}" data-bind="ed.targetWeight">` : ''}</div>
+      ${d.goal !== 'maintain' ? `<label style="margin-top:12px">Желаемый вес, кг (необязательно)</label><input class="input" type="number" inputmode="decimal" placeholder="Например, ${d.goal === 'lose' ? Math.round(d.weight * 0.9) : Math.round(d.weight * 1.08)}" value="${esc(d.targetWeight)}" data-bind="ed.targetWeight">` : ''}</div>
     <div class="field"><label>Уровень подготовки</label><div class="chips">${Object.entries(LEVELS).map(([k, l]) => `<button class="chip ${d.level === k ? 'on' : ''}" data-act="edSet" data-k="level" data-v="${k}">${l.title}</button>`).join('')}</div>
       <div class="sub small" style="margin-top:8px">Программа перестроится под выбранный уровень.</div></div>
     <div class="field"><label>Образ жизни</label><div class="chips">${lifeChips}</div></div>
@@ -1158,7 +1158,7 @@ function renderAbout() {
       ].map(([t, u]) => `<a class="list-item" href="${u}" data-act="link" data-url="${u}">${icon('link', 'sm')}<span class="grow">${t}</span></a>`).join('')}
     </div>
     <div class="section-title"><div class="h3">Фото тренажёров</div></div>
-    <div class="card small"><div class="sub">Фотографии — из Wikimedia Commons по свободным лицензиям.</div>
+    <div class="card small"><div class="sub">Фотографии — с Wikimedia Commons и Flickr по свободным лицензиям.</div>
       <div class="list" style="margin-top:8px">${CREDITS.map((c) => `<a class="list-item" href="${c.page}" data-act="link" data-url="${c.page}"><span class="grow"><b>${esc(EQUIPMENT_BY_ID[c.id]?.name || c.id)}</b> — ${esc(c.author)}</span><span class="muted tiny">${esc(c.license)}</span></a>`).join('')}</div></div>
     <div class="notice" style="margin-top:14px">${icon('alert', 'sm')}<div>Приложение не заменяет врача и тренера. При болях, хронических болезнях и беременности — сначала консультация специалиста.</div></div>
   </div>`;

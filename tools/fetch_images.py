@@ -1,4 +1,4 @@
-"""Скачивает фото тренажёров с Wikimedia Commons и обновляет список авторов.
+"""Скачивает фото тренажёров (Wikimedia Commons, Flickr) и обновляет список авторов.
 
     python3 tools/fetch_images.py          # докачать недостающие
     python3 tools/fetch_images.py --force  # перекачать все
@@ -34,15 +34,17 @@ def commons_url(title: str, width: int | None) -> str:
     return f"https://upload.wikimedia.org/wikipedia/commons/thumb/{h[0]}/{h[:2]}/{q}/{width}px-{q}"
 
 
-def download(url: str) -> bytes:
-    for attempt in range(12):
+def download(urls: list[str]) -> bytes:
+    # Commons часто отвечает 429 — пробуем разные размеры по очереди и ждём
+    for attempt in range(18):
+        url = urls[attempt % len(urls)]
         r = requests.get(url, headers=UA, timeout=60)
         if r.ok and r.headers.get("content-type", "").startswith("image/"):
             return r.content
-        wait = int(r.headers.get("retry-after", 0) or 0) or 20 * (attempt + 1)
+        wait = max(int(r.headers.get("retry-after", 0) or 0), 15)
         print(f"  {r.status_code}, жду {wait} с", flush=True)
         time.sleep(min(wait + 2, 660))
-    raise RuntimeError(f"не удалось скачать {url}")
+    raise RuntimeError(f"не удалось скачать {urls[0]}")
 
 
 def fit(img: Image.Image, crop: list[float] | None) -> Image.Image:
@@ -59,7 +61,8 @@ def fit(img: Image.Image, crop: list[float] | None) -> Image.Image:
         nh = int(w / target)
         top = max(0, int((h - nh) * 0.4))  # чуть выше центра — тренажёр обычно там
         img = img.crop((0, top, w, top + nh))
-    return img.resize(SIZE, Image.LANCZOS)
+    # маленькие фото не растягиваем
+    return img.resize(SIZE, Image.LANCZOS) if img.width > SIZE[0] else img
 
 
 def write_credits(meta: dict) -> None:
@@ -74,7 +77,7 @@ def write_credits(meta: dict) -> None:
     lines = [
         "# Авторы фото",
         "",
-        "Фото тренажёров — с Wikimedia Commons, по свободным лицензиям. Изображения уменьшены и обрезаны до 4:3.",
+        "Фото тренажёров — с Wikimedia Commons и Flickr, по свободным лицензиям (CC0, CC BY, CC BY-SA, public domain). Изображения уменьшены и обрезаны до 4:3.",
         "",
         "| Тренажёр | Файл | Автор | Лицензия |",
         "|---|---|---|---|",
@@ -90,21 +93,26 @@ def main() -> None:
     force = "--force" in sys.argv
     meta = json.loads((ROOT / "tools" / "images.json").read_text(encoding="utf-8"))
     OUT.mkdir(parents=True, exist_ok=True)
-    for key, m in meta.items():
+    # сначала Flickr (качается быстро), потом Commons
+    for key, m in sorted(meta.items(), key=lambda kv: "url" not in kv[1]):
         dest = OUT / f"{key}.jpg"
         if dest.exists() and not force:
             continue
-        # webp-превью Commons отдаёт нестабильно — для них берём оригинал
-        width = 960 if m.get("w", 0) > 960 and not m["title"].lower().endswith(".webp") else None
+        if m.get("url"):  # не с Commons (например, Flickr)
+            urls = [m["url"]]
+        elif m.get("w", 0) > 1280 and not m["title"].lower().endswith(".webp"):
+            urls = [commons_url(m["title"], w) for w in (1280, 960)]
+        else:
+            urls = [commons_url(m["title"], None)]
         print(f"{key}: {m['title']}", flush=True)
         try:
-            data = download(commons_url(m["title"], width))
+            data = download(urls)
         except RuntimeError as e:
             print("  пропуск:", e)
             continue
         fit(Image.open(io.BytesIO(data)), m.get("crop")).save(dest, "JPEG", quality=80, optimize=True, progressive=True)
         write_credits(meta)
-        time.sleep(4)
+        time.sleep(1 if m.get("url") else 8)
     write_credits(meta)
 
 

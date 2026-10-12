@@ -41,7 +41,8 @@ js/calc.js            формулы: BMR, TDEE, КБЖУ, вода, ИМТ
 js/program.js         генератор программы тренировок
 js/storage.js         Telegram CloudStorage + localStorage
 js/data/              тренажёры, упражнения, продукты, авторы фото
-img/equipment/        фото тренажёров (Wikimedia Commons)
+img/equipment/        фото тренажёров (Wikimedia Commons, Flickr)
+tools/                скрипт загрузки фото и список источников
 bot/                  Telegram-бот на aiogram 3
 tests/                тесты формул и генератора (node --test)
 ```
@@ -84,6 +85,6 @@ npm test                      # тесты формул и генератора 
 
 ## Фото тренажёров
 
-Фото взяты с [Wikimedia Commons](https://commons.wikimedia.org) по свободным лицензиям (CC0, CC BY, CC BY-SA, public domain). Авторы и лицензии — в [CREDITS.md](CREDITS.md) и в приложении: «Профиль → Как всё считается».
+Фото взяты с [Wikimedia Commons](https://commons.wikimedia.org) и [Flickr](https://www.flickr.com) по свободным лицензиям (CC0, CC BY, CC BY-SA, public domain). Авторы и лицензии — в [CREDITS.md](CREDITS.md) и в приложении: «Профиль → Как всё считается».
 
 > Приложение не заменяет врача и тренера. При болях, хронических заболеваниях и беременности — сначала консультация специалиста.
