@@ -1,0 +1,16 @@
+# Проверка формул и генератора программ на каждый пуш.
+# Сам сайт публикует GitHub Pages из ветки main (Settings → Pages).
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run tests
+        run: node --test tests/*.test.js
