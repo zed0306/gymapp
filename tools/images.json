@@ -35,12 +35,13 @@
     "license_url": "https://creativecommons.org/licenses/by-sa/2.0/"
   },
   "bench": {
-    "title": "File:Bench press.jpg",
-    "page": "https://commons.wikimedia.org/wiki/File:Bench_press.jpg",
-    "w": 4032,
-    "author": "SAgbley",
-    "license": "CC BY-SA 4.0",
-    "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
+    "title": "Jonathan Neese bench press",
+    "page": "https://www.flickr.com/photos/125473839@N07/23643481500",
+    "url": "https://live.staticflickr.com/1538/23643481500_5441248d6a_b.jpg",
+    "w": 1024,
+    "author": "ljgoyke",
+    "license": "CC BY 2.0",
+    "license_url": "https://creativecommons.org/licenses/by/2.0/"
   },
   "adjbench": {
     "title": "File:Incline bench.jpg",
@@ -51,12 +52,13 @@
     "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
   },
   "rack": {
-    "title": "File:Powerrack.jpg",
-    "page": "https://commons.wikimedia.org/wiki/File:Powerrack.jpg",
-    "w": 332,
-    "author": "Matus",
-    "license": "CC BY 3.0",
-    "license_url": "https://creativecommons.org/licenses/by/3.0"
+    "title": "Loaded bar in rack",
+    "page": "https://www.flickr.com/photos/125473839@N07/23310666774",
+    "url": "https://live.staticflickr.com/1490/23310666774_d3e66981ec_b.jpg",
+    "w": 1024,
+    "author": "ljgoyke",
+    "license": "CC BY 2.0",
+    "license_url": "https://creativecommons.org/licenses/by/2.0/"
   },
   "smith": {
     "title": "File:Smith machine.webp",
@@ -158,13 +160,22 @@
     "license": "CC BY 2.0",
     "license_url": "https://creativecommons.org/licenses/by/2.0/"
   },
-  "pullupbar": {
-    "title": "File:Pull up bar stand.jpg",
-    "page": "https://commons.wikimedia.org/wiki/File:Pull_up_bar_stand.jpg",
-    "w": 2160,
-    "author": "SAgbley",
+  "gravitron": {
+    "title": "File:Dip and pull-up machine.jpg",
+    "page": "https://commons.wikimedia.org/wiki/File:Dip_and_pull-up_machine.jpg",
+    "w": 4512,
+    "author": "Teemeah",
     "license": "CC BY-SA 4.0",
     "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "pullupbar": {
+    "title": "Pull-up bar in the office // Турник в офисе",
+    "page": "https://www.flickr.com/photos/39824826@N08/29787013981",
+    "url": "https://live.staticflickr.com/5515/29787013981_dbecfd134a_b.jpg",
+    "w": 1024,
+    "author": "alexyv",
+    "license": "CC BY-SA 2.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/2.0/"
   },
   "chestpress": {
     "title": "Girl doing chest press machine exercise",
@@ -193,12 +204,13 @@
     "license_url": "https://creativecommons.org/licenses/by-sa/2.0/"
   },
   "crossover": {
-    "title": "File:Chest flies with cable machine - cable crossover flies.jpg",
-    "page": "https://commons.wikimedia.org/wiki/File:Chest_flies_with_cable_machine_-_cable_crossover_flies.jpg",
-    "w": 3415,
-    "author": "Nenad Stojkovic",
+    "title": "Fitness enthusiast exercises with cable machine in modern gym during afternoon workout session",
+    "page": "https://www.flickr.com/photos/202846129@N03/54582016585",
+    "url": "https://live.staticflickr.com/65535/54582016585_887b555e14_b.jpg",
+    "w": 684,
+    "author": "nenadstojkovicart",
     "license": "CC BY 2.0",
-    "license_url": "https://creativecommons.org/licenses/by/2.0"
+    "license_url": "https://creativecommons.org/licenses/by/2.0/"
   },
   "dips": {
     "title": "File:Saimapark outdoor gym 3.jpg",
@@ -227,35 +239,39 @@
     "license_url": "https://creativecommons.org/licenses/by/2.0/"
   },
   "treadmill": {
-    "title": "File:2011 Tulane University - working out on treadmills at the Reily Center.jpg",
-    "page": "https://commons.wikimedia.org/wiki/File:2011_Tulane_University_-_working_out_on_treadmills_at_the_Reily_Center.jpg",
-    "w": 4256,
-    "author": "Tulane Public Relations",
+    "title": "treadmill",
+    "page": "https://www.flickr.com/photos/110255976@N07/11140836255",
+    "url": "https://live.staticflickr.com/5522/11140836255_57d82fca9d_b.jpg",
+    "w": 1024,
+    "author": "blacklerphotos",
     "license": "CC BY 2.0",
-    "license_url": "https://creativecommons.org/licenses/by/2.0"
+    "license_url": "https://creativecommons.org/licenses/by/2.0/"
   },
   "bike": {
-    "title": "File:Stationary bikes at a gym.jpg",
-    "page": "https://commons.wikimedia.org/wiki/File:Stationary_bikes_at_a_gym.jpg",
-    "w": 4608,
-    "author": "KeepActive Australia",
-    "license": "CC BY-SA 4.0",
-    "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
+    "title": "Woman Riding Exercise Bike",
+    "page": "https://www.flickr.com/photos/145160592@N03/31981174098",
+    "url": "https://live.staticflickr.com/4873/31981174098_f0327f4550_b.jpg",
+    "w": 1024,
+    "author": "SportsFanaticAustralia",
+    "license": "CC BY 2.0",
+    "license_url": "https://creativecommons.org/licenses/by/2.0/"
   },
   "elliptical": {
-    "title": "File:Gimnasio del hotel Hilton Garden Aeropuerto de Bogotá 20220702 170050.jpg",
-    "page": "https://commons.wikimedia.org/wiki/File:Gimnasio_del_hotel_Hilton_Garden_Aeropuerto_de_Bogot%C3%A1_20220702_170050.jpg",
-    "w": 4000,
-    "author": "Josefito123",
-    "license": "CC BY-SA 4.0",
-    "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
+    "title": "Exercise bike",
+    "page": "https://www.flickr.com/photos/125233660@N05/29792771184",
+    "url": "https://live.staticflickr.com/5575/29792771184_8205b96a53_b.jpg",
+    "w": 653,
+    "author": "TChapman9",
+    "license": "CC BY 2.0",
+    "license_url": "https://creativecommons.org/licenses/by/2.0/"
   },
   "rower": {
-    "title": "File:Concept 2 Indoor Rowers.JPG",
-    "page": "https://commons.wikimedia.org/wiki/File:Concept_2_Indoor_Rowers.JPG",
-    "w": 1983,
-    "author": "U.S. Navy (public domain)",
-    "license": "Public domain",
-    "license_url": ""
+    "title": "Rowing Machine",
+    "page": "https://www.flickr.com/photos/94822773@N08/8669792798",
+    "url": "https://live.staticflickr.com/8391/8669792798_f4c3dcee3c_b.jpg",
+    "w": 768,
+    "author": "Surge Lifestyle",
+    "license": "CC BY-SA 2.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/2.0/"
   }
 }
