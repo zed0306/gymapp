@@ -95,8 +95,8 @@ export function waterChart(el, days, norm) {
   attachTip(el, points, (p) => `${p.d.full}: ${fmt(p.d.value)} мл`);
 }
 
-// Вес: [{ label, value }]
-export function weightChart(el, pts) {
+// Линия по точкам [{ label, value }] — вес, замеры и т. п.
+export function lineChart(el, pts, { unit = 'кг', decimals = 1, label = 'Динамика' } = {}) {
   const W = el.clientWidth || 320;
   const H = 170;
   const pad = { t: 18, b: 22, l: 34, r: 40 };
@@ -106,7 +106,7 @@ export function weightChart(el, pts) {
   const hi = ticks[ticks.length - 1];
   const x = (i) => pad.l + (pts.length === 1 ? (W - pad.l - pad.r) / 2 : ((W - pad.l - pad.r) * i) / (pts.length - 1));
   const y = (v) => pad.t + (H - pad.t - pad.b) * (1 - (v - lo) / (hi - lo || 1));
-  const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, height: H, role: 'img', 'aria-label': 'Динамика веса' });
+  const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, height: H, role: 'img', 'aria-label': label });
   ticks.forEach((t) => {
     svg.appendChild(svgEl('line', { x1: pad.l, x2: W - pad.r + 30, y1: y(t), y2: y(t), stroke: 'var(--line)', 'stroke-width': 1 }));
     const tx = svgEl('text', { x: pad.l - 8, y: y(t) + 4, 'text-anchor': 'end' });
@@ -121,7 +121,7 @@ export function weightChart(el, pts) {
   const last = pts.length - 1;
   svg.appendChild(svgEl('circle', { cx: x(last), cy: y(pts[last].value), r: 5, fill: 'var(--accent-text)', stroke: 'var(--surface)', 'stroke-width': 2 }));
   const end = svgEl('text', { x: x(last) + 10, y: y(pts[last].value) + 4, style: 'fill:var(--text);font-weight:800;font-size:12px' });
-  end.textContent = fmt(pts[last].value, 1);
+  end.textContent = fmt(pts[last].value, decimals);
   svg.appendChild(end);
   [[0, 'start'], [last, 'end']].forEach(([i, anchor]) => {
     if (i === 0 && last === 0 && anchor === 'end') return;
@@ -132,5 +132,7 @@ export function weightChart(el, pts) {
   el.innerHTML = '<div class="tip"></div>';
   el.prepend(svg);
   const points = pts.map((p, i) => ({ x: x(i), y: y(p.value) - 6, p }));
-  attachTip(el, points, (q) => `${q.p.label}: ${fmt(q.p.value, 1)} кг`);
+  attachTip(el, points, (q) => `${q.p.label}: ${fmt(q.p.value, decimals)} ${unit}`);
 }
+
+export const weightChart = (el, pts) => lineChart(el, pts, { unit: 'кг', decimals: 1, label: 'Динамика веса' });

@@ -8,7 +8,9 @@ import {
 import { buildProgram, workoutForDate, candidatesFor, nextWeight } from './program.js';
 import { EQUIPMENT, EQUIPMENT_GROUPS, EQUIPMENT_BY_ID, EQUIPMENT_PRESETS, equipmentImage } from './data/equipment.js';
 import { FOODS, FOOD_BY_ID } from './data/foods.js';
-import { waterChart, weightChart } from './charts.js';
+import { waterChart, weightChart, lineChart } from './charts.js';
+import { ctx, setFeatures, getFeatures, findIn, slot, emit } from './core.js';
+import FEATURES from './features/index.js';
 
 const tg = window.Telegram?.WebApp;
 const tgOk = (v) => !!tg?.isVersionAtLeast?.(v);
@@ -166,14 +168,21 @@ function viewKey() {
 function render() {
   const key = viewKey();
   const y = window.scrollY;
+  for (const f of getFeatures()) {
+    try { f.unmount?.(); } catch (e) { console.error(e); }
+  }
   let html;
   if (!S.profile?.done) html = renderOnboarding();
   else if (nav.stack.length) html = renderScreen(nav.stack[nav.stack.length - 1]);
   else html = renderTab() + renderTabbar();
   if (sheet) html += renderSheet();
   if (rest) html += renderRest();
+  if (S.profile?.done) html += slot('overlay');
   app.innerHTML = html;
   mountCharts();
+  for (const f of getFeatures()) {
+    try { f.mount?.(app); } catch (e) { console.error(e); }
+  }
   syncBackButton();
   window.scrollTo(0, key === lastViewKey ? y : 0);
   lastViewKey = key;
@@ -243,7 +252,10 @@ function renderScreen(s) {
     case 'equipment': return renderEquipmentScreen();
     case 'editProfile': return renderEditProfile();
     case 'about': return renderAbout();
-    default: return '';
+    default: {
+      const fn = findIn('screens', s.name);
+      return fn ? fn(s.params || {}) : '';
+    }
   }
 }
 
@@ -562,7 +574,9 @@ function renderHome() {
       <span class="badge accent">${LEVELS[p.level].short}</span>
     </div>
     ${todayCard}
+    ${slot('home.top')}
     ${weekStrip()}
+    ${slot('home.afterWeek')}
     <div class="grid-2" style="margin-top:12px">
       <button class="card" data-act="tab" data-tab="food" style="text-align:left">
         <div class="stat" style="padding:0"><div class="lbl">${icon('flame', 'sm')}Калории</div></div>
@@ -630,6 +644,7 @@ function renderTrain() {
         <div class="muted tiny" style="margin-top:2px">${w.items.length} ${plural(w.items.length, 'упражнение', 'упражнения', 'упражнений')} · ~${estMinutes(w)} мин</div></div>
         <span class="chev muted">${icon('right')}</span></button>`).join('')}
     </div>
+    ${slot('train.afterProgram')}
     <details class="card" style="margin-top:12px"><summary class="row between"><div class="row">${icon('info')}<b>Правила программы</b></div><span class="muted">${icon('right', 'sm')}</span></summary>
       <ul class="tips sub small" style="margin-top:12px">${program.notes.map((t) => `<li>${esc(t)}</li>`).join('')}</ul></details>
     <button class="card card-link" style="margin-top:12px" data-act="push" data-name="equipment">
@@ -833,6 +848,8 @@ function finishSession(force = false) {
   nav.tab = 'home';
   sheet = { name: 'done', params: { title: w.title, minutes, volume: Math.round(volume), setsDone, prs } };
   haptic.ok();
+  emit('workout', { date: dkey(), title: w.title, minutes, volume: Math.round(volume), setsDone, prs, lifts });
+  syncServer();
   render();
 }
 
@@ -921,15 +938,28 @@ function renderAddFood() {
   return `<div class="page no-tabs">
     ${backHeader('Добавить еду')}
     <div class="row"><div class="grow" style="position:relative"><input class="input" placeholder="Поиск: гречка, курица…" value="${esc(foodQuery)}" data-bind="foodSearch" autocomplete="off"></div></div>
+    ${slot('food.addTop')}
     <button class="card card-link" style="margin-top:12px" data-act="sheet" data-name="customFood">
       <div class="icon-box accent">${icon('edit')}</div><div class="grow"><div class="h3">Свой продукт или блюдо</div><div class="sub small">Ввести калории и БЖУ вручную</div></div><span class="chev">${icon('right')}</span></button>
     <div class="card list" style="margin-top:12px" id="food-list">${foodListHtml(foodQuery)}</div>
   </div>`;
 }
 
+// Продукты: свои из модулей (например, отсканированные) + базовые
+function allFoods() {
+  const extra = getFeatures().flatMap((f) => {
+    try { return f.foods?.() || []; } catch { return []; }
+  });
+  return [...extra, ...FOODS];
+}
+
+function findFood(id) {
+  return FOOD_BY_ID[id] || allFoods().find((f) => f.id === id) || null;
+}
+
 function foodListHtml(q) {
   const s = q.trim().toLowerCase();
-  const list = FOODS.filter((f) => !s || f.name.toLowerCase().includes(s));
+  const list = allFoods().filter((f) => !s || f.name.toLowerCase().includes(s));
   if (!list.length) return '<div class="empty">Ничего не нашлось — добавь как «Свой продукт»</div>';
   return list.map((f) => `<button class="list-item" data-act="sheet" data-name="food" data-id="${f.id}">
     <div class="grow"><div class="h3">${esc(f.name)}</div><div class="sub small num">на 100 г: Б ${fmt(f.p, 1)} · Ж ${fmt(f.f, 1)} · У ${fmt(f.c, 1)}</div></div>
@@ -942,7 +972,8 @@ function foodCalc(f, g) {
 }
 
 function foodSheet({ id }) {
-  const f = FOOD_BY_ID[id];
+  const f = findFood(id);
+  if (!f) return '<div class="empty">Продукт не найден</div>';
   const g = f.unit || 100;
   const [k, p, fa, c] = foodCalc(f, g);
   return `<div class="h2">${esc(f.name)}</div>
@@ -1002,6 +1033,21 @@ function renderWater() {
   </div>`;
 }
 
+// Добавить запись в дневник питания за сегодня (используют и модули)
+function addFoodItem({ name, grams = 0, k, p = 0, f = 0, c = 0 }) {
+  const r1 = (x) => Math.round((+x || 0) * 10) / 10;
+  rollFood();
+  const item = [String(name).slice(0, 40), Math.round(+grams || 0), Math.round(+k || 0), r1(p), r1(f), r1(c)];
+  save('food', { d: dkey(), items: [...S.food.items, item] });
+  sheet = null;
+  nav.stack = [];
+  nav.tab = 'food';
+  haptic.ok();
+  toast(`${item[0]}: +${item[2]} ккал`);
+  emit('food', { item });
+  render();
+}
+
 function addWater(ml) {
   ml = Math.round(+ml);
   if (!(ml > 0 && ml <= 3000)) return;
@@ -1014,6 +1060,7 @@ function addWater(ml) {
   const norm = waterNorm(S.profile, isTrainingDay());
   const total = waterToday();
   if (total >= norm && total - ml < norm) { haptic.ok(); toast('Норма воды выполнена!'); } else { haptic.impact(); toast(`+${ml} мл`); }
+  emit('water', { ml, total, norm });
   render();
 }
 
@@ -1054,6 +1101,7 @@ function renderProfile() {
       <div class="chart" data-chart="weight"></div>
       ${ws.length < 2 ? '<div class="sub small" style="margin-top:8px">Записывай вес раз в неделю утром натощак — здесь появится график.</div>' : ''}
     </div>
+    ${profileProgress()}
     <div class="section-title"><div class="h3">Настройки</div></div>
     <div class="card list">
       ${[
@@ -1066,6 +1114,13 @@ function renderProfile() {
     <div class="sub small" style="text-align:center;margin-top:18px">${store.isCloud() ? 'Данные хранятся в облаке Telegram и доступны на всех устройствах' : 'Данные хранятся на этом устройстве'}</div>
     <button class="btn block danger" style="margin-top:12px" data-act="reset">${icon('trash')} Сбросить все данные</button>
   </div>`;
+}
+
+// Ссылки модулей в профиле: slot 'profile.links' возвращает html кнопок .list-item
+function profileProgress() {
+  const links = slot('profile.links');
+  if (!links) return '';
+  return `<div class="section-title"><div class="h3">Прогресс</div></div><div class="card list">${links}</div>`;
 }
 
 function weightSheet() {
@@ -1183,11 +1238,15 @@ function renderSheet() {
           <div class="stat" style="background:var(--surface-2)"><div class="lbl">Объём</div><div class="v num">${fmt(d.volume)}<small> кг</small></div></div>
         </div>
         ${d.prs.length ? `<div class="notice" style="margin-top:14px">${icon('zap', 'sm')}<div><b>Новые рекорды:</b><br>${d.prs.map(esc).join('<br>')}</div></div>` : ''}
+        ${slot('done.extra')}
         <div class="sub small" style="text-align:center;margin-top:14px">Не забудь воду и белок — сегодня норма воды ${fmt(waterNorm(S.profile, true))} мл.</div>
         <button class="btn block" style="margin-top:16px" data-act="closeSheet">Отлично!</button>`;
       break;
     }
-    default: body = '';
+    default: {
+      const fn = findIn('sheets', sheet.name);
+      body = fn ? fn(sheet.params || {}) : '';
+    }
   }
   return `<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet"><div class="inner"><div class="grab"></div>${body}</div></div>`;
 }
@@ -1295,19 +1354,12 @@ const ACTIONS = {
     BINDS.foodGrams(g);
   },
   addFood: ({ id }) => {
-    const f = FOOD_BY_ID[id];
+    const f = findFood(id);
+    if (!f) return;
     const g = +app.querySelector('input[data-bind="foodGrams"]').value;
     if (!(g > 0 && g <= 3000)) { toast('Укажи вес от 1 до 3000 г'); return; }
     const [k, p, fa, c] = foodCalc(f, g);
-    const r1 = (x) => Math.round(x * 10) / 10;
-    rollFood();
-    save('food', { d: dkey(), items: [...S.food.items, [f.name, g, Math.round(k), r1(p), r1(fa), r1(c)]] });
-    sheet = null;
-    nav.stack = [];
-    nav.tab = 'food';
-    haptic.ok();
-    toast(`${f.name}: +${Math.round(k)} ккал`);
-    render();
+    addFoodItem({ name: f.name, grams: g, k, p, f: fa, c });
   },
   addCustomFood: () => {
     const cf = window.__cf || {};
@@ -1316,14 +1368,8 @@ const ACTIONS = {
     const k = +cf.k;
     if (!(k >= 0 && k <= 5000) || cf.k === undefined || cf.k === '') { err.textContent = 'Калории — от 0 до 5000'; return; }
     const num = (x) => Math.max(0, Math.min(500, +x || 0));
-    rollFood();
-    save('food', { d: dkey(), items: [...S.food.items, [cf.name.trim().slice(0, 40), 0, Math.round(k), num(cf.p), num(cf.f), num(cf.c)]] });
     window.__cf = {};
-    sheet = null;
-    nav.stack = [];
-    nav.tab = 'food';
-    haptic.ok();
-    render();
+    addFoodItem({ name: cf.name.trim(), grams: 0, k, p: num(cf.p), f: num(cf.f), c: num(cf.c) });
   },
   delFood: ({ i }) => {
     const items = S.food.items.filter((_, j) => j !== +i);
@@ -1354,6 +1400,7 @@ const ACTIONS = {
     sheet = null;
     haptic.ok();
     toast('Вес записан — нормы пересчитаны');
+    emit('weight', { kg: v });
     render();
   },
   edSet: ({ k, v }) => { haptic.tap(); edit[k] = v; if (k === 'experience') edit.level = levelFromExperience(v); render(); },
@@ -1381,6 +1428,7 @@ const ACTIONS = {
     nav.stack.pop();
     haptic.ok();
     toast('Сохранено — программа обновлена');
+    emit('profile', { profile: p });
     render();
   },
   edEq: ({ id }) => { haptic.tap(); edit.equipment = toggle(edit.equipment, id); render(); },
@@ -1408,6 +1456,7 @@ const ACTIONS = {
   },
   reset: () => confirmDialog('Удалить все данные и пройти анкету заново?').then((ok) => {
     if (!ok) return;
+    emit('reset');
     store.clearAll();
     S = {};
     program = null;
@@ -1433,7 +1482,7 @@ const BINDS = {
   },
   foodSearch: (v) => { foodQuery = v; app.querySelector('#food-list').innerHTML = foodListHtml(v); },
   foodGrams: (v) => {
-    const f = FOOD_BY_ID[sheet?.params?.id];
+    const f = findFood(sheet?.params?.id);
     if (!f) return;
     app.querySelector('#food-calc').innerHTML = foodCalcHtml(...foodCalc(f, +v || 0));
   },
@@ -1447,13 +1496,23 @@ const BINDS = {
 app.addEventListener('click', (e) => {
   const el = e.target.closest('[data-act]');
   if (!el || el.disabled) return;
-  const fn = ACTIONS[el.dataset.act];
+  const fn = ACTIONS[el.dataset.act] || findIn('actions', el.dataset.act);
   if (fn) fn(el.dataset, el, e);
 });
 
 app.addEventListener('input', (e) => {
-  const el = e.target.closest('input[data-bind]');
-  if (el) BINDS[el.dataset.bind]?.(el.value, el.dataset, el);
+  const el = e.target.closest('input[data-bind], textarea[data-bind], select[data-bind]');
+  if (!el) return;
+  const fn = BINDS[el.dataset.bind] || findIn('binds', el.dataset.bind);
+  fn?.(el.value, el.dataset, el);
+});
+
+// Файлы (фото и т. п.): input[type=file][data-file="name"] → feature.binds[name](files, dataset, el)
+app.addEventListener('change', (e) => {
+  const el = e.target.closest('input[type="file"][data-file]');
+  if (!el) return;
+  const fn = findIn('binds', el.dataset.file);
+  fn?.(el.files, el.dataset, el);
 });
 
 // ── Тема и запуск ────────────────────────────────────
@@ -1468,7 +1527,95 @@ function applyTheme() {
   if (tgOk('7.10')) tg.setBottomBarColor(bg);
 }
 
+// ── API сервера бота (челленджи, статистика) ─────────
+const API_KEY = 'gymapp:api';
+
+function apiBase() {
+  let fromUrl = '';
+  try {
+    fromUrl = new URLSearchParams(location.search).get('api') || '';
+    if (fromUrl) localStorage.setItem(API_KEY, fromUrl);
+  } catch { /* нет localStorage */ }
+  let saved = '';
+  try { saved = localStorage.getItem(API_KEY) || ''; } catch { /* ignore */ }
+  const base = fromUrl || CONFIG.API_URL || saved || '';
+  return /^https:\/\//.test(base) || /^http:\/\/(localhost|127\.0\.0\.1)/.test(base) ? base.replace(/\/+$/, '') : '';
+}
+
+async function api(path, { method = 'GET', body } = {}) {
+  const base = apiBase();
+  if (!base) throw Object.assign(new Error('Сервер не подключён'), { code: 'no-api' });
+  const res = await fetch(base + path, {
+    method,
+    headers: { 'Content-Type': 'application/json', 'X-Init-Data': tg?.initData || '' },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw Object.assign(new Error(data.error || `Ошибка ${res.status}`), { status: res.status });
+  return data;
+}
+
+// Параметр запуска: ?startapp=… (t.me/bot?startapp=) или ?ch=… в адресе
+function startParam() {
+  const fromTg = tg?.initDataUnsafe?.start_param || '';
+  let fromUrl = '';
+  try {
+    const q = new URLSearchParams(location.search);
+    fromUrl = q.get('startapp') || (q.get('ch') ? `ch_${q.get('ch')}` : '');
+  } catch { /* ignore */ }
+  return fromTg || fromUrl;
+}
+
+// Отправка сводки на сервер (для челленджей и статистики админа); тихо, без ошибок
+let syncTimer = null;
+function syncServer() {
+  if (!apiBase() || !S.profile?.done) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(async () => {
+    const p = S.profile;
+    const lifts = Object.fromEntries(Object.entries(S.lifts || {}).filter(([, v]) => v.best || v.w).map(([k, v]) => [k, v.best || v.w]));
+    try {
+      await api('/api/sync', {
+        method: 'POST',
+        body: {
+          profile: { sex: p.sex, age: p.age, height: p.height, weight: p.weight, goal: p.goal, level: p.level, days: p.days },
+          stats: S.stats || {},
+          lifts,
+          hist: (S.hist || []).map((h) => [h[0], h[3]]),
+        },
+      });
+    } catch (e) {
+      console.warn('sync', e.message);
+    }
+  }, 1500);
+}
+
+function fillCtx() {
+  Object.assign(ctx, {
+    // состояние
+    S: () => S, save, profile: () => S.profile, program: () => program, recompute,
+    // навигация и отрисовка
+    render, push, back: goBack, openSheet, closeSheet: () => { sheet = null; render(); },
+    current: () => nav.stack[nav.stack.length - 1] || null, tab: () => nav.tab,
+    goTab: (t) => { nav.tab = t; nav.stack = []; render(); },
+    // интерфейс
+    toast, confirm: confirmDialog, haptic, backHeader, stepper, icon, esc, fmt, plural, ring, meter, lineChart,
+    // даты
+    dkey, parseKey, addDays, isoWd, shortDate, dayMonth, WD, WD_FULL, MONTHS, pad2,
+    // Telegram
+    tg, tgOk, tgUser, inTelegram, botUsername,
+    openLink: (url) => (tg?.openLink ? tg.openLink(url) : window.open(url, '_blank')),
+    openTelegramLink: (url) => (tgOk('6.1') ? tg.openTelegramLink(url) : window.open(url, '_blank')),
+    // данные и сервер
+    addFoodItem, findFood, waterToday, isTrainingDay, emit, slot,
+    api, apiBase, startParam, sync: syncServer,
+  });
+}
+
 async function boot() {
+  fillCtx();
+  setFeatures(FEATURES);
+  store.registerKeys(FEATURES.flatMap((f) => f.keys || []));
   if (tg) {
     tg.ready();
     tg.expand();
@@ -1484,6 +1631,8 @@ async function boot() {
     if (S.session) nav.stack = [{ name: 'session', params: {} }];
   }
   render();
+  emit('boot', { startParam: startParam() });
+  syncServer();
   clearInterval(ticker);
   ticker = setInterval(tickNow, 250);
   // Перевалили за полночь — обновим «сегодня»

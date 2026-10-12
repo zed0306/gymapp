@@ -9,6 +9,13 @@ const PREFIX = `gymapp:${uid}:`;
 
 export const KEYS = ['profile', 'water', 'food', 'foodHist', 'weights', 'lifts', 'hist', 'session'];
 
+// Модули-фичи добавляют свои ключи до load()
+export function registerKeys(keys) {
+  for (const k of keys) if (!KEYS.includes(k)) KEYS.push(k);
+}
+
+export const MAX_VALUE = 4096;
+
 const cache = {};
 
 function localGet(key) {
@@ -75,7 +82,7 @@ function push(key, value) {
     else {
       const raw = JSON.stringify(value);
       // лимит CloudStorage — 4096 символов на значение
-      if (raw.length <= 4096) cloud.setItem(key, raw);
+      if (raw.length <= MAX_VALUE) cloud.setItem(key, raw);
       else console.warn('CloudStorage: значение слишком большое', key, raw.length);
     }
   } catch (e) {
@@ -98,3 +105,6 @@ export function clearAll() {
 }
 
 export const isCloud = () => !!cloud;
+
+// Размер значения в символах (лимит CloudStorage — 4096 на ключ)
+export const sizeOf = (value) => JSON.stringify(value ?? null).length;
