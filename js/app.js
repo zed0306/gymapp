@@ -8,7 +8,6 @@ import {
 import { buildProgram, workoutForDate, candidatesFor, nextWeight } from './program.js';
 import { EQUIPMENT, EQUIPMENT_GROUPS, EQUIPMENT_BY_ID, EQUIPMENT_PRESETS, equipmentImage } from './data/equipment.js';
 import { FOODS, FOOD_BY_ID } from './data/foods.js';
-import { CREDITS } from './data/credits.js';
 import { waterChart, weightChart } from './charts.js';
 
 const tg = window.Telegram?.WebApp;
@@ -325,7 +324,7 @@ function renderEquipGrid(selected, act) {
     ${EQUIPMENT_GROUPS.map((g) => `<div class="group-title">${g.title}</div>
       <div class="eq-grid">${EQUIPMENT.filter((e) => e.group === g.key).map((e) => `
         <button class="eq ${set.has(e.id) ? 'on' : ''}" data-act="${act}" data-id="${e.id}">
-          <div class="ph">${icon('dumbbell', 'lg')}<img src="${equipmentImage(e.id)}" alt="${esc(e.name)}" loading="lazy" onerror="this.remove()"></div>
+          <div class="ph"><img src="${equipmentImage(e.id)}" alt="${esc(e.name)}" loading="lazy"></div>
           <div class="tick">${icon('check', 'sm')}</div>
           <div class="meta"><div class="name">${esc(e.name)}</div>${e.hint ? `<div class="hint">${esc(e.hint)}</div>` : ''}</div>
         </button>`).join('')}</div>`).join('')}`;
@@ -997,7 +996,9 @@ function renderWater() {
     <div class="card"><div class="chart" data-chart="water"></div></div>
     ${log.length ? `<div class="section-title"><div class="h3">Сегодня</div><span class="sub small">${log.length} ${plural(log.length, 'запись', 'записи', 'записей')}</span></div>
       <div class="card list">${log.slice(0, 8).map(([ml, m]) => `<div class="list-item"><div class="icon-box water">${icon('drop', 'sm')}</div><div class="grow"><b>${fmt(ml)} мл</b></div><span class="muted num">${pad2(Math.floor(m / 60))}:${pad2(m % 60)}</span></div>`).join('')}</div>` : ''}
-    <div class="notice" style="margin-top:14px">${icon('info', 'sm')}<div>Перед тренировкой — 400–600 мл за 2 часа, во время — по 150–250 мл каждые 15–20 минут. Чай, кофе и супы тоже считаются, но основа — вода.</div></div>
+    <button class="card card-link" style="margin-top:14px" data-act="reminders">
+      <div class="icon-box water">${icon('bell')}</div><div class="grow"><div class="h3">Напоминать пить воду</div><div class="sub small">Бот напишет в течение дня и в дни тренировок</div></div><span class="chev">${icon('right')}</span></button>
+    <div class="notice" style="margin-top:12px">${icon('info', 'sm')}<div>Перед тренировкой — 400–600 мл за 2 часа, во время — по 150–250 мл каждые 15–20 минут. Чай, кофе и супы тоже считаются, но основа — вода.</div></div>
   </div>`;
 }
 
@@ -1058,7 +1059,7 @@ function renderProfile() {
       ${[
         ['editProfile', 'edit', 'Мои данные и цели', 'Параметры, уровень, дни, ограничения'],
         ['equipment', 'dumbbell', 'Мой зал', `${p.equipment.length} ${plural(p.equipment.length, 'тренажёр', 'тренажёра', 'тренажёров')}`],
-        ['about', 'info', 'Как всё считается', 'Формулы, источники, авторы фото'],
+        ['about', 'info', 'Как всё считается', 'Формулы и источники'],
       ].map(([n, ic, t, s]) => `<button class="list-item" data-act="push" data-name="${n}"><div class="icon-box">${icon(ic)}</div><div class="grow"><div class="h3">${t}</div><div class="sub small">${s}</div></div><span class="muted">${icon('right')}</span></button>`).join('')}
       <button class="list-item" data-act="reminders"><div class="icon-box water">${icon('bell')}</div><div class="grow"><div class="h3">Напоминания в боте</div><div class="sub small">Вода и дни тренировок</div></div><span class="muted">${icon('right')}</span></button>
     </div>
@@ -1157,9 +1158,6 @@ function renderAbout() {
         ['ВОЗ: классификация ИМТ', 'https://www.who.int/europe/news-room/fact-sheets/item/a-healthy-lifestyle---who-recommendations'],
       ].map(([t, u]) => `<a class="list-item" href="${u}" data-act="link" data-url="${u}">${icon('link', 'sm')}<span class="grow">${t}</span></a>`).join('')}
     </div>
-    <div class="section-title"><div class="h3">Фото тренажёров</div></div>
-    <div class="card small"><div class="sub">Фотографии — с Wikimedia Commons и Flickr по свободным лицензиям.</div>
-      <div class="list" style="margin-top:8px">${CREDITS.map((c) => `<a class="list-item" href="${c.page}" data-act="link" data-url="${c.page}"><span class="grow"><b>${esc(EQUIPMENT_BY_ID[c.id]?.name || c.id)}</b> — ${esc(c.author)}</span><span class="muted tiny">${esc(c.license)}</span></a>`).join('')}</div></div>
     <div class="notice" style="margin-top:14px">${icon('alert', 'sm')}<div>Приложение не заменяет врача и тренера. При болях, хронических болезнях и беременности — сначала консультация специалиста.</div></div>
   </div>`;
 }
@@ -1401,7 +1399,9 @@ const ACTIONS = {
     if (!bot) { toast('Бот ещё не подключён (BOT_USERNAME в js/config.js)'); return; }
     const p = S.profile;
     const tz = -new Date().getTimezoneOffset();
-    const payload = `r_${p.days.join('')}_${tz < 0 ? `m${-tz}` : tz}_${Math.round(p.weight)}`;
+    const goal = { lose: 'l', maintain: 'm', gain: 'g' }[p.goal] || 'm';
+    const level = { beginner: 'b', intermediate: 'i', advanced: 'a' }[p.level] || 'b';
+    const payload = `r_${p.days.join('')}_${tz < 0 ? `m${-tz}` : tz}_${Math.round(p.weight)}_${goal}${level}${p.sex === 'f' ? 'f' : 'm'}`;
     const url = `https://t.me/${bot}?start=${payload}`;
     if (tgOk('6.1')) tg.openTelegramLink(url);
     else window.open(url, '_blank');

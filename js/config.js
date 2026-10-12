@@ -2,5 +2,5 @@
 export const CONFIG = {
   // Юзернейм бота без @ — нужен для кнопки «Напоминания в боте».
   // Пример: 'GymBuddyBot'. Пусто — кнопка подскажет, что бот не настроен.
-  BOT_USERNAME: '',
+  BOT_USERNAME: 'gyminiappbot',
 };

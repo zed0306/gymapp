@@ -1,4 +1,4 @@
-// Тренажёры и инвентарь. Фото — Wikimedia Commons, авторы и лицензии в CREDITS.md.
+// Тренажёры и инвентарь. Иллюстрации — img/equipment/<id>.svg (tools/draw-equipment.mjs).
 
 export const EQUIPMENT_GROUPS = [
   { key: 'free', title: 'Свободные веса и скамьи' },
@@ -48,7 +48,7 @@ export const EQUIPMENT = [
 
 export const EQUIPMENT_BY_ID = Object.fromEntries(EQUIPMENT.map((e) => [e.id, e]));
 
-export const equipmentImage = (id) => `img/equipment/${id}.jpg`;
+export const equipmentImage = (id) => `img/equipment/${id}.svg`;
 
 export const EQUIPMENT_PRESETS = [
   { key: 'typical', title: 'Обычный зал', ids: ['barbell', 'ezbar', 'dumbbells', 'bench', 'adjbench', 'rack', 'smith', 'legpress', 'legext', 'legcurl', 'hyperext', 'latpull', 'cablerow', 'crossover', 'chestpress', 'pecdeck', 'pullupbar', 'dips', 'treadmill', 'bike', 'elliptical'] },
