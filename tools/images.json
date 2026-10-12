@@ -1,0 +1,180 @@
+{
+  "kettlebell": {
+    "title": "File:Kettlebell truebalance romeike.jpg",
+    "page": "https://commons.wikimedia.org/wiki/File:Kettlebell_truebalance_romeike.jpg",
+    "w": 2592,
+    "author": "Detlef Romeike",
+    "license": "CC BY-SA 2.5",
+    "license_url": "https://creativecommons.org/licenses/by-sa/2.5"
+  },
+  "rack": {
+    "title": "File:Powerrack.jpg",
+    "page": "https://commons.wikimedia.org/wiki/File:Powerrack.jpg",
+    "w": 332,
+    "author": "Matus",
+    "license": "CC BY 3.0",
+    "license_url": "https://creativecommons.org/licenses/by/3.0"
+  },
+  "smith": {
+    "title": "File:Smith machine.webp",
+    "page": "https://commons.wikimedia.org/wiki/File:Smith_machine.webp",
+    "w": 2279,
+    "author": "Wikideas1",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en"
+  },
+  "legpress": {
+    "title": "File:Leg press machine.jpg",
+    "page": "https://commons.wikimedia.org/wiki/File:Leg_press_machine.jpg",
+    "w": 4512,
+    "author": "Teemeah",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "hack": {
+    "title": "File:HackSquatMachineExercise.JPG",
+    "page": "https://commons.wikimedia.org/wiki/File:HackSquatMachineExercise.JPG",
+    "w": 768,
+    "author": "George Stepanek",
+    "license": "CC BY-SA 3.0",
+    "license_url": "http://creativecommons.org/licenses/by-sa/3.0/",
+    "crop": [
+      0,
+      0,
+      0.5,
+      1
+    ]
+  },
+  "legcurl": {
+    "title": "File:LyingLegCurlMachineExercise.JPG",
+    "page": "https://commons.wikimedia.org/wiki/File:LyingLegCurlMachineExercise.JPG",
+    "w": 768,
+    "author": "George Stepanek",
+    "license": "CC BY-SA 3.0",
+    "license_url": "http://creativecommons.org/licenses/by-sa/3.0/",
+    "crop": [
+      0,
+      0,
+      0.5,
+      1
+    ]
+  },
+  "calf": {
+    "title": "File:SeatedCalfRaiseMachineExercise.JPG",
+    "page": "https://commons.wikimedia.org/wiki/File:SeatedCalfRaiseMachineExercise.JPG",
+    "w": 640,
+    "author": "George Stepanek",
+    "license": "CC BY-SA 3.0",
+    "license_url": "http://creativecommons.org/licenses/by-sa/3.0/",
+    "crop": [
+      0,
+      0,
+      0.5,
+      1
+    ]
+  },
+  "abductor": {
+    "title": "File:Hip abductor machine.jpg",
+    "page": "https://commons.wikimedia.org/wiki/File:Hip_abductor_machine.jpg",
+    "w": 4512,
+    "author": "Teemeah",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "hyperext": {
+    "title": "File:Back extension bench.webp",
+    "page": "https://commons.wikimedia.org/wiki/File:Back_extension_bench.webp",
+    "w": 2638,
+    "author": "Wikideas1",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en"
+  },
+  "latpull": {
+    "title": "File:Diverging Lat Pulldown Machine.jpg",
+    "page": "https://commons.wikimedia.org/wiki/File:Diverging_Lat_Pulldown_Machine.jpg",
+    "w": 1108,
+    "author": "Teddyhtsai",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en"
+  },
+  "pullupbar": {
+    "title": "File:Pull up bar stand.jpg",
+    "page": "https://commons.wikimedia.org/wiki/File:Pull_up_bar_stand.jpg",
+    "w": 2160,
+    "author": "SAgbley",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "chestpress": {
+    "title": "File:Girl doing chest press machine exercise.jpg",
+    "page": "https://commons.wikimedia.org/wiki/File:Girl_doing_chest_press_machine_exercise.jpg",
+    "w": 6000,
+    "author": "Tyler Read",
+    "license": "CC BY 2.0",
+    "license_url": "https://creativecommons.org/licenses/by/2.0"
+  },
+  "pecdeck": {
+    "title": "File:Pec deck Fly.jpg",
+    "page": "https://commons.wikimedia.org/wiki/File:Pec_deck_Fly.jpg",
+    "w": 2922,
+    "author": "Aliva Sahoo",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "crossover": {
+    "title": "File:Chest flies with cable machine - cable crossover flies.jpg",
+    "page": "https://commons.wikimedia.org/wiki/File:Chest_flies_with_cable_machine_-_cable_crossover_flies.jpg",
+    "w": 3415,
+    "author": "Nenad Stojkovic",
+    "license": "CC BY 2.0",
+    "license_url": "https://creativecommons.org/licenses/by/2.0"
+  },
+  "dips": {
+    "title": "File:Saimapark outdoor gym 3.jpg",
+    "page": "https://commons.wikimedia.org/wiki/File:Saimapark_outdoor_gym_3.jpg",
+    "w": 4032,
+    "author": "Salgo60",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "captain": {
+    "title": "File:Dip and pull-up machine.jpg",
+    "page": "https://commons.wikimedia.org/wiki/File:Dip_and_pull-up_machine.jpg",
+    "w": 4512,
+    "author": "Teemeah",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "treadmill": {
+    "title": "File:2011 Tulane University - working out on treadmills at the Reily Center.jpg",
+    "page": "https://commons.wikimedia.org/wiki/File:2011_Tulane_University_-_working_out_on_treadmills_at_the_Reily_Center.jpg",
+    "w": 4256,
+    "author": "Tulane Public Relations",
+    "license": "CC BY 2.0",
+    "license_url": "https://creativecommons.org/licenses/by/2.0"
+  },
+  "bike": {
+    "title": "File:Stationary bikes at a gym.jpg",
+    "page": "https://commons.wikimedia.org/wiki/File:Stationary_bikes_at_a_gym.jpg",
+    "w": 4608,
+    "author": "KeepActive Australia",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "elliptical": {
+    "title": "File:Gimnasio del hotel Hilton Garden Aeropuerto de Bogotá 20220702 170050.jpg",
+    "page": "https://commons.wikimedia.org/wiki/File:Gimnasio_del_hotel_Hilton_Garden_Aeropuerto_de_Bogot%C3%A1_20220702_170050.jpg",
+    "w": 4000,
+    "author": "Josefito123",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "rower": {
+    "title": "File:Concept 2 Indoor Rowers.JPG",
+    "page": "https://commons.wikimedia.org/wiki/File:Concept_2_Indoor_Rowers.JPG",
+    "w": 1983,
+    "author": "U.S. Navy (public domain)",
+    "license": "Public domain",
+    "license_url": ""
+  }
+}
