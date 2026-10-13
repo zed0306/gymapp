@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  bodyFat, bfCategory, whtr, whtrCategory, whtrShown, whtrNormRange, parseCm, upsertMeasure, trimMeasures, normalizeEntry,
-  deltaTone, fieldStats, daysBetween, FIELDS, MAX_ENTRIES, MAX_JSON,
+  bodyFat, bfCategory, whtr, whtrCategory, whtrShown, whtrNormRange, parseCm, checkField, upsertMeasure, trimMeasures, normalizeEntry,
+  deltaTone, fieldStats, daysBetween, lastKnown, formValues, entryDeltas, changesBase, FIELDS, MAX_ENTRIES, MAX_JSON,
 } from '../js/features/measures.js';
 import measures from '../js/features/measures.js';
 
@@ -139,9 +139,120 @@ test('parseCm: разбор поля формы', () => {
   assert.equal(parseCm(' 88 '), 88);
   assert.equal(parseCm('88,'), 88);
   assert.equal(parseCm('88,25'), 88.3);
-  for (const bad of ['87-', '8e', '1e2', '0x50', '-5', '0', '0,0', '88,5,1', '88 5', 'abc', '1234', '+88', '∞']) {
+  assert.equal(parseCm(',5'), 0.5);
+  // любое неотрицательное число разбирается: диапазон проверяет checkField, а не «не понял число»
+  assert.equal(parseCm('0'), 0);
+  assert.equal(parseCm('0,0'), 0);
+  assert.equal(parseCm('1000'), 1000);
+  assert.equal(parseCm('1234'), 1234);
+  for (const bad of ['87-', '8e', '1e2', '0x50', '-5', '88,5,1', '88 5', 'abc', '+88', '∞', '.', ',']) {
     assert.ok(Number.isNaN(parseCm(bad)), bad);
   }
+});
+
+test('checkField: пусто, мусор и выход за диапазон — разные ответы', () => {
+  const neck = FIELDS.find((f) => f.k === 'neck');
+  const waist = FIELDS.find((f) => f.k === 'waist');
+  assert.deepEqual(checkField(neck, ''), { value: null });
+  assert.deepEqual(checkField(neck, '   '), { value: null });
+  assert.deepEqual(checkField(neck, undefined), { value: null });
+  assert.deepEqual(checkField(neck, '39,5'), { value: 39.5 });
+  assert.deepEqual(checkField(neck, '20'), { value: 20 }); // границы включительно
+  assert.deepEqual(checkField(neck, '70'), { value: 70 });
+  // 0 и 1000 — числа, просто вне диапазона: подсказываем диапазон
+  assert.deepEqual(checkField(neck, '0'), { error: 'Шея — от 20 до 70 см' });
+  assert.deepEqual(checkField(neck, '1000'), { error: 'Шея — от 20 до 70 см' });
+  assert.deepEqual(checkField(neck, '19,9'), { error: 'Шея — от 20 до 70 см' });
+  assert.deepEqual(checkField(waist, '0,0'), { error: 'Талия — от 40 до 200 см' });
+  // мусор — просим число, пример зависит от пола
+  assert.deepEqual(checkField(neck, '8e'), { error: 'Шея: не понял число — введи, например, 39,5' });
+  assert.deepEqual(checkField(neck, 'abc', 'f'), { error: 'Шея: не понял число — введи, например, 32,5' });
+  assert.deepEqual(checkField(waist, '87-'), { error: 'Талия: не понял число — введи, например, 86,5' });
+});
+
+// Талию мерят чаще остального: 3.09 — только талия, 17.09 — все места, 1.10 — снова только талия
+const PARTIAL = [
+  ['2026-09-03', null, null, 95, null, null, null],
+  ['2026-09-17', 40, 104, 93, 101, 34, 57],
+  ['2026-10-01', null, null, 91, null, null, null],
+];
+
+test('lastKnown: последнее известное значение каждого места', () => {
+  assert.deepEqual(lastKnown(PARTIAL, 'waist'), { value: 91, date: '2026-10-01' });
+  assert.deepEqual(lastKnown(PARTIAL, 'chest'), { value: 104, date: '2026-09-17' });
+  assert.deepEqual(lastKnown(PARTIAL, 'thigh'), { value: 57, date: '2026-09-17' });
+  assert.equal(lastKnown(PARTIAL.slice(0, 1), 'chest'), null);
+  assert.equal(lastKnown([], 'neck'), null);
+  assert.equal(lastKnown(null, 'neck'), null);
+});
+
+test('formValues: предзаполнение и сравнение — по последнему известному значению каждого места', () => {
+  // новый замер: в последнем мерили только талию, остальное берём из 17.09, а не оставляем пустым
+  const add = formValues(PARTIAL, '2026-10-13');
+  assert.equal(add.own, null);
+  assert.equal(add.prevDate, '2026-10-01');
+  assert.deepEqual(add.fields.waist, { value: 91, was: 91, wasDate: '2026-10-01' });
+  assert.deepEqual(add.fields.chest, { value: 104, was: 104, wasDate: '2026-09-17' });
+  assert.deepEqual(add.fields.neck, { value: 40, was: 40, wasDate: '2026-09-17' });
+  // правка записи: в полях — её значения, сравнение — с последним известным до неё
+  const ed = formValues(PARTIAL, '2026-10-01');
+  assert.deepEqual(ed.own, PARTIAL[2]);
+  assert.equal(ed.prevDate, '2026-09-17');
+  assert.deepEqual(ed.fields.waist, { value: 91, was: 93, wasDate: '2026-09-17' });
+  assert.deepEqual(ed.fields.chest, { value: null, was: 104, wasDate: '2026-09-17' });
+  // задним числом между замерами: только то, что было известно до этой даты
+  const back = formValues(PARTIAL, '2026-09-10');
+  assert.equal(back.prevDate, '2026-09-03');
+  assert.deepEqual(back.fields.waist, { value: 95, was: 95, wasDate: '2026-09-03' });
+  assert.deepEqual(back.fields.chest, { value: null, was: null, wasDate: null });
+  // первый замер
+  const first = formValues([], '2026-10-13');
+  assert.equal(first.own, null);
+  assert.equal(first.prevDate, null);
+  for (const f of FIELDS) assert.deepEqual(first.fields[f.k], { value: null, was: null, wasDate: null });
+  assert.equal(formValues(null, '2026-10-13').fields.neck.value, null);
+});
+
+test('entryDeltas: изменение каждого места к его последнему известному значению', () => {
+  // полный → только талия → полный: грудь и остальное сравниваются с первым, талия — со вторым
+  const H = [
+    ['2026-08-01', 40, 104, 95, 102, 34, 57],
+    ['2026-08-15', null, null, 93, null, null, null],
+    ['2026-09-01', 39.5, 103, 92, 101, 34.5, 57],
+  ];
+  const c = entryDeltas(H, 2);
+  assert.deepEqual(c.chest, { value: 103, prev: 104, prevDate: '2026-08-01', delta: -1 });
+  assert.deepEqual(c.waist, { value: 92, prev: 93, prevDate: '2026-08-15', delta: -1 });
+  assert.equal(c.neck.delta, -0.5);
+  assert.equal(c.biceps.delta, 0.5);
+  assert.equal(c.thigh.delta, 0);
+  // место не мерили — изменения нет, но прошлое значение известно
+  assert.deepEqual(entryDeltas(H, 1).neck, { value: null, prev: 40, prevDate: '2026-08-01', delta: null });
+  assert.deepEqual(entryDeltas(H, 1).waist, { value: 93, prev: 95, prevDate: '2026-08-01', delta: -2 });
+  // первый замер — сравнивать не с чем
+  assert.deepEqual(entryDeltas(H, 0).waist, { value: 95, prev: null, prevDate: null, delta: null });
+  assert.equal(entryDeltas(null, 0).waist.delta, null);
+});
+
+test('changesBase: дата в заголовке «Изменения с …» совпадает с отсчётом большинства плиток', () => {
+  const stats = (list) => FIELDS.map((f) => fieldStats(list, f.k));
+  // талия — с 3.09, остальные пять мест — с 17.09: заголовок «с 17.09», у талии своя дата
+  const L = [...PARTIAL.slice(0, 2), ['2026-10-01', 39.5, 102, 91, 100, 34.5, 56]];
+  assert.equal(changesBase(stats(L)), '2026-09-17');
+  assert.equal(fieldStats(L, 'waist').firstDate, '2026-09-03');
+  // все места с одной даты
+  assert.equal(changesBase(stats([['2026-01-01', 40, 100, 90, 100, 34, 56], ['2026-02-01', 39, 99, 89, 99, 34, 56]])), '2026-01-01');
+  // поровну — более ранняя
+  assert.equal(changesBase(stats([
+    ['2026-01-01', 40, 100, null, null, null, null],
+    ['2026-01-10', null, null, 90, 100, null, null],
+    ['2026-02-01', 39, 99, 89, 99, null, null],
+  ])), '2026-01-01');
+  // у плиток с одним замером изменения нет — они не в счёт; изменений нет вовсе → null
+  assert.equal(changesBase(stats(PARTIAL)), '2026-09-03');
+  assert.equal(changesBase(stats([['2026-01-01', 40, 100, 90, 100, 34, 56]])), null);
+  assert.equal(changesBase([]), null);
+  assert.equal(changesBase(null), null);
 });
 
 test('upsertMeasure: одна запись на дату, сортировка, перезапись', () => {

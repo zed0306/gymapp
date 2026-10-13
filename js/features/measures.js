@@ -33,13 +33,22 @@ function num(v) {
   return Number.isFinite(n) && n > 0 ? r1(n) : null;
 }
 
-// Разбор поля формы: '' → null (не мерил), '88,5' / '88.5' → 88.5, мусор ('87-', '8e', '0x50') → NaN
+// Разбор поля формы: '' → null (не мерил), '88,5' / '88.5' → 88.5, мусор ('87-', '8e', '0x50') → NaN.
+// Любое неотрицательное число (0, 1000) разбирается — его отсечёт проверка диапазона в checkField.
 export function parseCm(raw) {
   const s = String(raw ?? '').trim().replace(',', '.');
   if (!s) return null;
-  if (!/^(\d{1,3}(\.\d*)?|\.\d+)$/.test(s)) return NaN;
-  const n = r1(+s);
-  return n > 0 ? n : NaN;
+  if (!/^(\d+(\.\d*)?|\.\d+)$/.test(s)) return NaN;
+  return r1(+s);
+}
+
+// Проверка поля формы: { value } (null — пусто) или { error } с текстом для человека
+export function checkField(f, raw, sex = 'm') {
+  const v = parseCm(raw);
+  if (v === null) return { value: null };
+  if (Number.isNaN(v)) return { error: `${f.t}: не понял число — введи, например, ${String(f.typ[sex === 'f' ? 'f' : 'm'] + 0.5).replace('.', ',')}` };
+  if (v < f.min || v > f.max) return { error: `${f.t} — от ${f.min} до ${f.max} см` };
+  return { value: v };
 }
 
 function validDate(k) {
@@ -193,6 +202,64 @@ export function daysBetween(a, b) {
   return Math.round(day(b) - day(a));
 }
 
+// Последнее известное значение поля в списке (по возрастанию даты): { value, date } или null.
+// Места меряют не все сразу (талия — каждую неделю, остальное — раз в месяц),
+// поэтому сравнивать и предзаполнять нужно по каждому полю отдельно, а не по одной записи.
+export function lastKnown(entries, k) {
+  const i = BY_KEY[k].i;
+  for (let j = (entries || []).length - 1; j >= 0; j--) {
+    const v = entries[j][i];
+    if (v !== null && v !== undefined) return { value: v, date: entries[j][0] };
+  }
+  return null;
+}
+
+// Значения формы за дату: own — запись за эту дату (правка) или null, prevDate — дата прошлого замера.
+// По полям: value — что подставить (своё значение или последнее известное до даты),
+// was / wasDate — с чем сравнивать: последнее известное значение места до даты
+export function formValues(entries, date) {
+  const list = entries || [];
+  const own = list.find((e) => e[0] === date) || null;
+  const before = list.filter((e) => e[0] < date);
+  const prevDate = before.length ? before[before.length - 1][0] : null;
+  const fields = Object.fromEntries(FIELDS.map((f) => {
+    const known = lastKnown(before, f.k);
+    const value = own ? own[f.i] ?? null : known ? known.value : null;
+    return [f.k, { value, was: known ? known.value : null, wasDate: known ? known.date : null }];
+  }));
+  return { own, prevDate, fields };
+}
+
+// Изменения записи entries[idx] по каждому полю к его последнему известному значению до неё
+export function entryDeltas(entries, idx) {
+  const before = (entries || []).slice(0, Math.max(0, idx));
+  const e = (entries || [])[idx];
+  return Object.fromEntries(FIELDS.map((f) => {
+    const v = e ? e[f.i] ?? null : null;
+    const prev = lastKnown(before, f.k);
+    return [f.k, {
+      value: v,
+      prev: prev ? prev.value : null,
+      prevDate: prev ? prev.date : null,
+      delta: v !== null && prev ? r1(v - prev.value) : null,
+    }];
+  }));
+}
+
+// Общая точка отсчёта для сетки изменений: дата первого замера, от которой считается
+// большинство плиток (при равенстве — более ранняя); null — изменений ещё нет
+export function changesBase(statsList) {
+  const counts = new Map();
+  for (const st of statsList || []) {
+    if (st && st.count > 1) counts.set(st.firstDate, (counts.get(st.firstDate) || 0) + 1);
+  }
+  let best = null;
+  for (const [d, n] of counts) {
+    if (!best || n > best[1] || (n === best[1] && d < best[0])) best = [d, n];
+  }
+  return best ? best[0] : null;
+}
+
 // ── Состояние экрана ────────────────────────────────────────────────────────
 
 // [ключ, подпись чипа, винительный падеж для «… ещё не измеряли»]
@@ -203,6 +270,28 @@ const CHART_METRICS = [
 let metric = 'waist';
 let showAll = false;
 const HISTORY_SHORT = 6;
+// Черновик формы msAdd: переживает перерисовки ядра (смена темы в Telegram, полночь, конец
+// таймера отдыха). { date, vals: {k: строка поля}, focus: {k, s, e} | null, err, bad: [k] }
+let draft = null;
+// Защита от двойного тапа: кнопка «Сохранить» шторки лежит ровно над «Добавить замер», строки
+// истории — под фоном шторки. Второй тап на том же месте вскоре после закрытия (открытия) шторки
+// не должен открыть её снова (или сохранить только что открытую форму). Тап в другом месте — можно.
+let lastTap = null; // {x, y, t} — последний клик в документе (фаза перехвата, до ядра)
+let closed = null; // {x, y, t} — тап, которым шторку закрыли
+let opened = null; // {x, y, t} — тап, которым шторку открыли
+function sameTap(mark, e, ms) {
+  if (!mark || Date.now() - mark.t > ms) return false;
+  if (!e || !Number.isFinite(e.clientX) || (!e.clientX && !e.clientY)) return false;
+  return Math.hypot(e.clientX - mark.x, e.clientY - mark.y) < 48;
+}
+const justClosed = (e) => sameTap(closed, e, 650);
+const justOpened = (e) => sameTap(opened, e, 450);
+// Отметка для только что закрытой/открытой шторки — по тапу, который это сделал (если он был)
+const tapMark = () => (lastTap && Date.now() - lastTap.t < 1000 ? { ...lastTap, t: Date.now() } : null);
+// Что было на экране до перерисовки (unmount → mount): экран замеров, шторка «имя:дата», её прокрутка
+let hadPage = false;
+let hadSheet = null;
+let sheetScroll = 0;
 const MON = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
 
 const list = () => trimMeasures(ctx.S()[KEY]);
@@ -217,6 +306,12 @@ function dateLong(k) {
   return d.getFullYear() === new Date().getFullYear() ? s : `${s} ${d.getFullYear()}`;
 }
 
+// Короткая дата: D.MM, для прошлых лет — D.MM.ГГ (иначе «с 9.08» при истории больше года неоднозначно)
+function sd(k) {
+  const s = ctx.shortDate(k);
+  return k.slice(0, 4) === String(new Date().getFullYear()) ? s : `${s}.${k.slice(2, 4)}`;
+}
+
 function agoText(days) {
   if (days <= 0) return 'сегодня';
   if (days === 1) return 'вчера';
@@ -227,11 +322,11 @@ function series(entries, m) {
   const p = ctx.profile() || {};
   if (m === 'bf') {
     return entries
-      .map((e) => ({ label: ctx.shortDate(e[0]), value: bodyFat(p.sex, p.height, e) }))
+      .map((e) => ({ label: sd(e[0]), date: e[0], value: bodyFat(p.sex, p.height, e) }))
       .filter((x) => x.value !== null);
   }
   const i = BY_KEY[m].i;
-  return entries.filter((e) => e[i] !== null).map((e) => ({ label: ctx.shortDate(e[0]), value: e[i] }));
+  return entries.filter((e) => e[i] !== null).map((e) => ({ label: sd(e[0]), date: e[0], value: e[i] }));
 }
 
 // Последняя запись, по которой считается % жира
@@ -337,6 +432,9 @@ for (const sex of ['m', 'f']) {
   };
 }
 
+const DOT_R = 2.6;
+const DOT_ON = 3.6;
+
 function tapeSvg(k, t, has, on) {
   const cx = 100 + t.cx;
   const ry = t.limb ? 2.6 : 3.6;
@@ -344,11 +442,12 @@ function tapeSvg(k, t, has, on) {
   const x2 = f1(cx + t.rx);
   const end = t.side === 'r' ? x2 : x1;
   const edge = t.side === 'r' ? 200 : 0;
-  return `<g class="tape ${has ? '' : 'off'} ${on ? 'on' : ''}">
+  // Радиус точки — атрибутом: CSS-свойство r для SVG поддерживают не все WebView
+  return `<g class="tape ${has ? '' : 'off'} ${on ? 'on' : ''}" data-k="${k}">
     <path class="ext" d="M${end},${t.y}H${edge}"/>
     <path class="tb" d="M${x1},${t.y}A${t.rx},${ry} 0 0 1 ${x2},${t.y}"/>
     <path class="tf" d="M${x1},${t.y}A${t.rx},${ry} 0 0 0 ${x2},${t.y}"/>
-    <circle class="dot" cx="${end}" cy="${t.y}" r="2.6"/>
+    <circle class="dot" cx="${end}" cy="${t.y}" r="${on ? DOT_ON : DOT_R}"/>
   </g>`;
 }
 
@@ -418,7 +517,7 @@ function bodyFatCard(entries) {
       <div><span class="dot" style="background:var(--warn)"></span><div><div class="tiny muted">Жировая масса</div><b class="num">${ctx.fmt(fatKg, 1)} кг</b></div></div>
       <div><span class="dot" style="background:var(--accent-text)"></span><div><div class="tiny muted">Безжировая масса</div><b class="num">${ctx.fmt(w - fatKg, 1)} кг</b></div></div>
     </div>` : ''}
-    <div class="ms-note">${ctx.icon('info', 'sm')}<span>Формула ВМС США по ${need === 'шея и талия' ? 'шее, талии' : 'шее, талии, бёдрам'} и росту${w ? ` при весе ${n1(w)} кг` : ''}. Это оценка, погрешность ±3–4%.${bf.date !== latest ? ` По замеру ${ctx.shortDate(bf.date)}.` : ''}</span></div>
+    <div class="ms-note">${ctx.icon('info', 'sm')}<span>Формула ВМС США по ${need === 'шея и талия' ? 'шее, талии' : 'шее, талии, бёдрам'} и росту${w ? ` при весе ${n1(w)} кг` : ''}. Это оценка, погрешность ±3–4%.${bf.date !== latest ? ` По замеру ${sd(bf.date)}.` : ''}</span></div>
   </div>`;
 }
 
@@ -453,6 +552,53 @@ const HOW_TO = `<ul class="ms-how">
 </ul>
 <div class="sub small" style="margin-top:10px">Мерь утром натощак, до тренировки, мягкой сантиметровой лентой. Лента идёт горизонтально и плотно прилегает, но не врезается. Раз в 2 недели достаточно.</div>`;
 
+// Подпись и содержимое карточки графика (обновляются на месте при переключении показателя)
+function chartParts(entries, m) {
+  const pts = series(entries, m);
+  const unit = m === 'bf' ? '%' : 'см';
+  const u = (v) => `${v}${unit === '%' ? '%' : ` ${unit}`}`;
+  let sub = '';
+  if (pts.length > 1) {
+    const d = r1(pts[pts.length - 1].value - pts[0].value);
+    sub = `с ${sd(pts[0].date)}: ${d ? u(signed(d)) : 'без изменений'}`;
+  }
+  let body;
+  if (pts.length > 1) body = '<div class="chart" data-ms-chart></div>';
+  else if (pts.length === 1) body = `<div class="ms-chart-empty">${ctx.icon('chart')}<div><b>${u(n1(pts[0].value))}</b> — пока одна точка. Добавь следующий замер через 1–2 недели, и здесь появится график.</div></div>`;
+  else {
+    const acc = CHART_METRICS.find(([k]) => k === m)[2];
+    body = `<div class="ms-chart-empty">${ctx.icon('chart')}<div>${m === 'bf' ? `Для % жира нужны ${sexOf() === 'f' ? 'шея, талия и бёдра' : 'шея и талия'} в одном замере.` : `${acc} ещё не измеряли — добавь в следующий замер.`}</div></div>`;
+  }
+  return { sub, body };
+}
+
+function drawChart(root) {
+  const el = root.querySelector('[data-ms-chart]');
+  if (!el) return;
+  const pts = series(list(), metric);
+  if (pts.length < 2) return;
+  const name = CHART_METRICS.find(([k]) => k === metric)[1];
+  ctx.lineChart(el, pts, { unit: metric === 'bf' ? '%' : 'см', decimals: 1, label: `Динамика: ${name.toLowerCase()}` });
+}
+
+// История: строки и кнопка «Показать все / Свернуть»
+function histParts(entries) {
+  const rev = [...entries].reverse();
+  const shown = showAll ? rev : rev.slice(0, HISTORY_SHORT);
+  const items = shown.map((e) => {
+    const d = ctx.parseKey(e[0]);
+    const parts = FIELDS.filter((f) => e[f.i] !== null).map((f) => `${f.t.toLowerCase()} ${n1(e[f.i])}`);
+    return `<button class="list-item" data-act="msOpen" data-date="${e[0]}">
+      <div class="ms-day"><b>${d.getDate()}</b><span>${MON[d.getMonth()]}</span></div>
+      <div class="grow"><div class="h3">${dateLong(e[0])}</div><div class="sub small ellipsis">${parts.join(' · ')}</div></div>
+      <span class="muted">${ctx.icon('right')}</span></button>`;
+  }).join('');
+  const more = rev.length > HISTORY_SHORT
+    ? `<button class="btn ghost sm block" style="margin-top:10px" data-act="msMore">${showAll ? 'Свернуть' : `Показать все · ${rev.length}`}</button>`
+    : '';
+  return { items, more };
+}
+
 function screenHome() {
   const entries = list();
   const p = ctx.profile() || {};
@@ -482,48 +628,23 @@ function screenHome() {
   const stale = age > STALE_DAYS
     ? `<div class="notice ms-stale">${ctx.icon('alert', 'sm')}<div class="grow"><b>Пора обновить замеры: раз в 2 недели, утром</b><div>Последний был ${agoText(age)}.</div></div></div>`
     : '';
-  const firstDate = entries[0][0];
-
-  // Сетка показателей
+  // Сетка показателей. Изменение плитки — от первого замера этого места; общая дата в заголовке —
+  // та, от которой считается большинство плиток, у остальных своя дата прямо в плитке
+  const base = changesBase(FIELDS.map((f) => stats[f.k]));
   const grid = FIELDS.map((f) => {
     const st = stats[f.k];
     const delta = st && st.count > 1 ? st.delta : null;
+    const own = delta !== null && st.firstDate !== base ? `<span class="ms-from">с ${sd(st.firstDate)}</span>` : '';
     return `<button class="stat ms-stat ${metric === f.k ? 'on' : ''}" data-act="msMetric" data-k="${f.k}">
-      <div class="lbl">${f.t}</div>
+      <div class="lbl">${f.t}${own}</div>
       <div class="v num">${st ? n1(st.value) : '—'}${st ? '<small> см</small>' : ''}</div>
       ${delta !== null ? deltaHtml(p.goal, f.k, delta) : `<span class="ms-delta">${st ? 'один замер' : 'нет данных'}</span>`}
     </button>`;
   }).join('');
 
-  // График
-  const pts = series(entries, metric);
-  const mAcc = CHART_METRICS.find(([k]) => k === metric)[2];
-  const unit = metric === 'bf' ? '%' : 'см';
-  let chartSub = '';
-  if (pts.length > 1) {
-    const d = r1(pts[pts.length - 1].value - pts[0].value);
-    chartSub = `с ${pts[0].label}: ${d ? `${signed(d)}${unit === '%' ? '%' : ` ${unit}`}` : 'без изменений'}`;
-  }
   const chips = CHART_METRICS.map(([k, t]) => `<button class="chip ${metric === k ? 'on' : ''}" data-act="msMetric" data-k="${k}">${t}</button>`).join('');
-  let chartBody;
-  if (pts.length > 1) chartBody = '<div class="chart" data-ms-chart></div>';
-  else if (pts.length === 1) chartBody = `<div class="ms-chart-empty">${ctx.icon('chart')}<div><b>${n1(pts[0].value)}${unit === '%' ? '%' : ` ${unit}`}</b> — пока одна точка. Добавь следующий замер через 1–2 недели, и здесь появится график.</div></div>`;
-  else chartBody = `<div class="ms-chart-empty">${ctx.icon('chart')}<div>${metric === 'bf' ? `Для % жира нужны ${sex === 'f' ? 'шея, талия и бёдра' : 'шея и талия'} в одном замере.` : `${mAcc} ещё не измеряли — добавь в следующий замер.`}</div></div>`;
-
-  // История
-  const rev = [...entries].reverse();
-  const shown = showAll ? rev : rev.slice(0, HISTORY_SHORT);
-  const hist = shown.map((e) => {
-    const d = ctx.parseKey(e[0]);
-    const parts = FIELDS.filter((f) => e[f.i] !== null).map((f) => `${f.t.toLowerCase()} ${n1(e[f.i])}`);
-    return `<button class="list-item" data-act="msOpen" data-date="${e[0]}">
-      <div class="ms-day"><b>${d.getDate()}</b><span>${MON[d.getMonth()]}</span></div>
-      <div class="grow"><div class="h3">${dateLong(e[0])}</div><div class="sub small ellipsis">${parts.join(' · ')}</div></div>
-      <span class="muted">${ctx.icon('right')}</span></button>`;
-  }).join('');
-  const more = rev.length > HISTORY_SHORT
-    ? `<button class="btn ghost sm block" style="margin-top:10px" data-act="msMore">${showAll ? 'Свернуть' : `Показать все · ${rev.length}`}</button>`
-    : '';
+  const chart = chartParts(entries, metric);
+  const hist = histParts(entries);
 
   return `<div class="page no-tabs ms-page">
     ${ctx.backHeader('Замеры тела', `Последний — ${dateLong(last[0])}`)}
@@ -534,14 +655,14 @@ function screenHome() {
     </div>
     ${bodyFatCard(entries)}
     ${whtrCard(stats.waist)}
-    <div class="section-title"><div class="h3">Изменения</div><span class="sub small">${entries.length > 1 ? `с ${ctx.shortDate(firstDate)}` : ''}</span></div>
+    <div class="section-title"><div class="h3">Изменения</div><span class="sub small">${base ? `с ${sd(base)}` : ''}</span></div>
     <div class="ms-grid">${grid}</div>
-    <div class="section-title"><div class="h3">Динамика</div><span class="sub small">${chartSub}</span></div>
+    <div class="section-title" data-ms-dyn><div class="h3">Динамика</div><span class="sub small" data-ms-chart-sub>${chart.sub}</span></div>
     <div class="chips ms-chips">${chips}</div>
-    <div class="card" style="margin-top:12px">${chartBody}</div>
+    <div class="card ms-chart-card" data-ms-chart-card>${chart.body}</div>
     <div class="section-title"><div class="h3">История</div></div>
-    <div class="card list ms-hist">${hist}</div>
-    ${more}
+    <div class="card list ms-hist">${hist.items}</div>
+    <div data-ms-more>${hist.more}</div>
     <details class="card ms-details">
       <summary class="row between"><span class="h3">Как правильно мерить</span><span class="muted">${ctx.icon('right')}</span></summary>
       <div style="margin-top:12px">${HOW_TO}</div>
@@ -552,80 +673,88 @@ function screenHome() {
 
 // ── Шторки ──────────────────────────────────────────────────────────────────
 
-// Значения для формы: запись за дату или последняя до неё (предзаполнение) и предыдущая (для сравнения)
-function formContext(date) {
-  const entries = list();
-  const own = entries.find((e) => e[0] === date) || null;
-  const before = entries.filter((e) => e[0] < date);
-  const prev = before[before.length - 1] || null;
-  const base = own || entries[entries.length - 1] || null;
-  return { own, prev, base, entries };
-}
-
-function lastKnown(entries, f) {
-  for (let j = entries.length - 1; j >= 0; j--) if (entries[j][f.i] !== null) return entries[j][f.i];
-  return null;
-}
-
 // Число в поле ввода — с запятой, как во всём интерфейсе
 const cmText = (v) => (v === null || v === undefined ? '' : String(v).replace('.', ','));
 
-// Плашка разницы с прошлым замером: текст и класс (пусто, если разницы нет)
+// Плашка разницы с прошлым значением поля: текст и класс (пусто, если разницы нет)
 function changeBadge(k, v, was) {
   const d = v !== null && was !== null && Number.isFinite(v) ? r1(v - was) : 0;
   return { text: d ? signed(d) : '', cls: `ms-chg ${d ? deltaTone(ctx.profile()?.goal, k, d) : ''}`.trim() };
 }
 
-function sheetAdd({ date } = {}) {
+// Дата формы: из параметров шторки, иначе из черновика (полночь не меняет её на лету), иначе сегодня
+function formDate(date) {
+  if (validDate(date)) return date;
+  if (draft && validDate(draft.date)) return draft.date;
+  return ctx.dkey();
+}
+
+function sheetAdd({ date, fresh } = {}) {
   const today = ctx.dkey();
-  const d = validDate(date) ? date : today;
-  const { own, prev, base } = formContext(d);
-  const fields = FIELDS.map((f) => {
-    const v = base ? base[f.i] : null;
+  const d = formDate(date);
+  const { own, prevDate, fields: fv } = formValues(list(), d);
+  // Черновик — то, что человек уже ввёл: переживает перерисовку ядра
+  const dr = draft && draft.date === d ? draft : null;
+  let prefilled = false;
+  const fields = FIELDS.map((f, j) => {
+    const x = fv[f.k];
+    if (x.value !== null) prefilled = true;
+    const raw = dr && Object.prototype.hasOwnProperty.call(dr.vals, f.k) ? dr.vals[f.k] : cmText(x.value);
     // type=number не понимает запятую (Chromium выбрасывает её: «84,5» → 845, WebKit отдаёт ''),
-    // поэтому поле текстовое с цифровой клавиатурой; разбор — parseCm
-    const step = ctx.stepper(`ms.${f.k}`, cmText(v), 'см', 0.5)
+    // поэтому поле текстовое с цифровой клавиатурой; разбор — parseCm.
+    // Клавиша действия: «Далее» на всех полях, кроме последнего, на нём — «Готово» (см. onKey)
+    const step = ctx.stepper(`ms.${f.k}`, raw, 'см', 0.5)
       .replaceAll('data-act="step"', 'data-act="msStep"')
       .replace('<input type="number" ', '<input type="text" ')
-      .replace('<input ', `<input placeholder="—" autocomplete="off" spellcheck="false" enterkeyhint="done" maxlength="6" aria-label="${f.t}, см" `);
-    const was = prev && prev[f.i] !== null ? prev[f.i] : null;
-    const b = changeBadge(f.k, v, was);
-    return `<div class="ms-field" data-ms-field="${f.k}" data-was="${was ?? ''}">
-      <div class="txt"><div class="nm">${f.t}<span class="${b.cls}" data-ms-chg="${f.k}">${b.text}</span></div><div class="hint">${f.hint}</div></div>
+      .replace('<input ', `<input placeholder="—" autocomplete="off" spellcheck="false" enterkeyhint="${j < FIELDS.length - 1 ? 'next' : 'done'}" maxlength="6" aria-label="${f.t}, см" `);
+    const v = parseCm(raw);
+    const b = changeBadge(f.k, v, x.was);
+    const bad = Number.isNaN(v) || !!dr?.bad?.includes(f.k);
+    // Это место в прошлый замер не мерили — подписываем дату значения, с которым сравниваем
+    const since = x.was !== null && x.wasDate !== prevDate ? ` <span class="ms-since">· прошлый ${sd(x.wasDate)}</span>` : '';
+    return `<div class="ms-field${bad ? ' bad' : ''}" data-ms-field="${f.k}" data-was="${x.was ?? ''}">
+      <div class="txt"><div class="nm">${f.t}<span class="${b.cls}" data-ms-chg="${f.k}">${b.text}</span></div><div class="hint">${f.hint}${since}</div></div>
       ${step}
     </div>`;
   }).join('');
   const sub = d === today ? `Сегодня, ${dateLong(d)}` : dateLong(d);
   const hint = own
     ? 'В полях — значения этого замера, поправь, что нужно.'
-    : base ? 'Подставлены прошлые значения — поправь те, что изменились.' : 'Заполни, что можешь, — пустые поля не сохранятся.';
-  return `<div class="h2">${own ? 'Изменить замер' : 'Новый замер'}</div>
+    : prefilled ? 'Подставлены последние значения — поправь те, что изменились.' : 'Заполни, что можешь, — пустые поля не сохранятся.';
+  return `<div class="h2" data-ms-sheet="msAdd:${d}">${own ? 'Изменить замер' : 'Новый замер'}</div>
     <div class="sub small" style="margin-top:4px">${sub} · мерь утром, до еды, мягкой лентой</div>
-    ${own && !date ? `<div class="notice" style="margin-top:12px">${ctx.icon('info', 'sm')}<div>Замер за сегодня уже есть — сохранение обновит его.</div></div>` : ''}
-    <div class="ms-form">${fields}</div>
-    <div class="tiny muted" style="margin-top:10px">${hint} Пропускаешь какое-то место — очисти его поле.</div>
-    <div class="err" id="ms-err"></div>
+    ${own && fresh ? `<div class="notice" style="margin-top:12px">${ctx.icon('info', 'sm')}<div>Замер за ${d === today ? 'сегодня' : dateLong(d)} уже есть — сохранение обновит его.</div></div>` : ''}
+    <div class="ms-form" data-date="${d}">${fields}</div>
+    <div class="ms-tip">${hint} Пропускаешь какое-то место — очисти его поле.</div>
+    <div class="err" id="ms-err">${dr?.err ? ctx.esc(dr.err) : ''}</div>
     <button class="btn block" data-act="msSave" data-date="${d}">${ctx.icon('check')} Сохранить</button>`;
 }
 
 function sheetEntry({ date } = {}) {
   const entries = list();
   const idx = entries.findIndex((e) => e[0] === date);
-  if (idx < 0) return `<div class="empty">Замер не найден</div><button class="btn block ghost" data-act="closeSheet">Закрыть</button>`;
+  if (idx < 0) return `<div class="empty" data-ms-sheet="msEntry:">Замер не найден</div><button class="btn block ghost" data-act="closeSheet">Закрыть</button>`;
   const e = entries[idx];
-  const prev = entries[idx - 1] || null;
+  const prevDate = idx > 0 ? entries[idx - 1][0] : null;
+  const ds = entryDeltas(entries, idx);
   const p = ctx.profile() || {};
   const age = daysBetween(e[0], ctx.dkey());
+  let vsPrev = false;
   const rows = FIELDS.map((f) => {
-    const v = e[f.i];
-    const pv = prev ? prev[f.i] : null;
-    const delta = v !== null && pv !== null ? r1(v - pv) : null;
-    return `<div class="kv ms-kv"><span>${f.t}</span><span class="row" style="gap:10px">${delta !== null ? deltaHtml(p.goal, f.k, delta, '') : ''}<b class="num">${v === null ? '<span class="muted">—</span>' : `${n1(v)} см`}</b></span></div>`;
+    const x = ds[f.k];
+    // Изменение — к последнему известному значению этого места; если его мерили не в прошлый
+    // замер, а раньше, под названием — дата, с которой сравниваем
+    let since = '';
+    if (x.delta !== null) {
+      if (x.prevDate === prevDate) vsPrev = true;
+      else since = `<small class="ms-since">с ${sd(x.prevDate)}</small>`;
+    }
+    return `<div class="kv ms-kv"><span>${f.t}${since}</span><span class="row" style="gap:10px">${x.delta !== null ? deltaHtml(p.goal, f.k, x.delta, '') : ''}<b class="num">${x.value === null ? '<span class="muted">—</span>' : `${n1(x.value)} см`}</b></span></div>`;
   }).join('');
   const bf = bodyFat(p.sex, p.height, e);
   const wr = whtr(e[3], p.height);
-  return `<div class="h2">${dateLong(e[0])}</div>
-    <div class="sub small" style="margin-top:4px">${idx + 1}-й замер · ${agoText(age)}${prev ? ` · сравнение с ${ctx.shortDate(prev[0])}` : ''}</div>
+  return `<div class="h2" data-ms-sheet="msEntry:${e[0]}">${dateLong(e[0])}</div>
+    <div class="sub small" style="margin-top:4px">${idx + 1}-й замер · ${agoText(age)}${vsPrev ? ` · сравнение с ${sd(prevDate)}` : ''}</div>
     <div style="margin-top:10px">${rows}
       ${bf !== null ? `<div class="kv ms-kv"><span>% жира (оценка)</span><span class="row" style="gap:10px">${pill(bfCategory(p.sex, bf).tone, bfCategory(p.sex, bf).title)}<b class="num">${ctx.fmt(bf, 1)}%</b></span></div>` : ''}
       ${wr !== null ? `<div class="kv ms-kv"><span>Талия / рост</span><span class="row" style="gap:10px">${pill(whtrCategory(wr).tone, whtrCategory(wr).title)}<b class="num">${ctx.fmt(whtrShown(wr), 2)}</b></span></div>` : ''}
@@ -640,6 +769,29 @@ function sheetEntry({ date } = {}) {
 
 function sheetEl() {
   return document.querySelector('.sheet') || document;
+}
+
+const formEl = () => document.querySelector('.sheet .ms-form');
+
+// Черновик открытой формы (заводится при первом вводе или перед перерисовкой)
+function ensureDraft() {
+  const date = formEl()?.dataset.date;
+  if (!validDate(date)) return null;
+  if (!draft || draft.date !== date) draft = { date, vals: {}, focus: null, scroll: 0, err: '', bad: [] };
+  return draft;
+}
+
+// Перед перерисовкой ядра: запомнить из DOM всё, что человек успел сделать в форме
+function captureDraft(form) {
+  const dr = ensureDraft();
+  if (!dr) return;
+  for (const input of form.querySelectorAll('input[data-bind^="ms."]')) dr.vals[input.dataset.bind.slice(3)] = input.value;
+  const a = document.activeElement;
+  dr.focus = a && form.contains(a) && a.matches('input[data-bind^="ms."]')
+    ? { k: a.dataset.bind.slice(3), s: a.selectionStart, e: a.selectionEnd }
+    : null;
+  dr.err = document.querySelector('#ms-err')?.textContent || '';
+  dr.bad = [...form.querySelectorAll('.ms-field.bad')].map((el) => el.dataset.msField);
 }
 
 function updateChange(k) {
@@ -661,6 +813,16 @@ function updateChange(k) {
   if (err) err.textContent = '';
 }
 
+// Ввод в поле формы: в черновик (состояние модуля) и плашку разницы, без перерисовки
+function onInput(k, value) {
+  const dr = ensureDraft();
+  if (dr) {
+    dr.vals[k] = String(value ?? '');
+    dr.err = '';
+  }
+  updateChange(k);
+}
+
 // Значение поля: null — пусто, NaN — не число (в т. ч. badInput у старого type=number)
 function readField(input) {
   if (!input) return null;
@@ -676,35 +838,33 @@ function stepField({ bind, d }, el) {
   ctx.haptic.tap();
   const cur = readField(input);
   let v;
-  // Пусто или мусор — подставляем последнее известное (или типичное) значение
-  if (cur === null || Number.isNaN(cur)) v = lastKnown(list(), f) ?? f.typ[sexOf()];
-  else v = cur + +d;
+  if (cur === null || Number.isNaN(cur)) {
+    // Пусто или мусор — последнее известное значение места до даты формы (или типичное)
+    const date = formEl()?.dataset.date || ctx.dkey();
+    v = lastKnown(list().filter((e) => e[0] < date), k)?.value ?? f.typ[sexOf()];
+  } else v = cur + +d;
   v = Math.max(f.min, Math.min(f.max, r1(v)));
   input.value = cmText(v);
-  updateChange(k);
+  onInput(k, input.value);
 }
 
-function saveForm({ date }) {
+function saveForm({ date }, el, ev) {
+  // Второй тап двойного нажатия по «Добавить замер» попадает сюда: кнопки на одном месте
+  if (justOpened(ev)) return;
   const root = sheetEl();
   const err = root.querySelector('#ms-err');
   if (!validDate(date)) return;
   const vals = [];
   for (const f of FIELDS) {
     const input = root.querySelector(`input[data-bind="ms.${f.k}"]`);
-    const v = readField(input);
-    if (v === null) { vals.push(null); continue; }
-    const bad = Number.isNaN(v);
-    if (bad || v < f.min || v > f.max) {
+    const r = input?.validity?.badInput ? checkField(f, 'x', sexOf()) : checkField(f, input ? input.value : '', sexOf());
+    if (r.error) {
       root.querySelector(`[data-ms-field="${f.k}"]`)?.classList.add('bad');
-      if (err) {
-        err.textContent = bad
-          ? `${f.t}: не понял число — введи, например, ${cmText(f.typ[sexOf()] + 0.5)}`
-          : `${f.t} — от ${f.min} до ${f.max} см`;
-      }
+      if (err) err.textContent = r.error;
       ctx.haptic.warn();
       return;
     }
-    vals.push(v);
+    vals.push(r.value);
   }
   if (vals.every((v) => v === null)) {
     if (err) err.textContent = 'Заполни хотя бы одно поле';
@@ -714,6 +874,7 @@ function saveForm({ date }) {
   const before = list();
   const existed = before.some((e) => e[0] === date);
   const next = upsertMeasure(before, [date, ...vals]);
+  draft = null;
   ctx.save(KEY, next);
   ctx.haptic.ok();
   ctx.toast(existed ? 'Замер обновлён' : 'Замер сохранён');
@@ -733,6 +894,93 @@ function removeEntry({ date }) {
   });
 }
 
+// ── Переключение графика и истории на месте ─────────────────────────────────
+// Полная перерисовка заново проигрывает анимацию .page (с transform): страница моргает,
+// а нижняя панель на время анимации уезжает за экран. Поэтому меняем только нужные узлы.
+
+function applyMetric(page) {
+  for (const b of page.querySelectorAll('[data-act="msMetric"]')) {
+    const on = b.dataset.k === metric;
+    b.classList.toggle('on', on);
+    if (b.classList.contains('chip')) b.setAttribute('aria-pressed', String(on));
+  }
+  for (const g of page.querySelectorAll('.ms-body .tape')) {
+    const on = g.dataset.k === metric;
+    g.classList.toggle('on', on);
+    g.querySelector('.dot')?.setAttribute('r', String(on ? DOT_ON : DOT_R));
+  }
+  const { sub, body } = chartParts(list(), metric);
+  const subEl = page.querySelector('[data-ms-chart-sub]');
+  if (subEl) subEl.textContent = sub;
+  page.querySelector('[data-ms-chart-card]').innerHTML = body;
+  drawChart(page);
+}
+
+// Тап по подписи на фигуре или плитке: график может быть далеко внизу — прокручиваем к нему
+function revealChart() {
+  const title = document.querySelector('[data-ms-dyn]');
+  const card = document.querySelector('[data-ms-chart-card]');
+  if (!title || !card) return;
+  const bar = document.querySelector('.ms-page .bottom-bar .inner');
+  const bottom = bar ? bar.getBoundingClientRect().top : window.innerHeight;
+  const top = title.getBoundingClientRect().top;
+  if (top >= 0 && card.getBoundingClientRect().bottom <= bottom) return;
+  const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  window.scrollTo({ top: Math.max(0, window.scrollY + top - 8), behavior: reduce ? 'auto' : 'smooth' });
+}
+
+function pickMetric({ k }, el) {
+  if (!CHART_METRICS.some(([m]) => m === k)) return;
+  const page = document.querySelector('.ms-page');
+  // Пустой экран (замеров ещё нет): графика нет, переключать нечего
+  if (!page?.querySelector('[data-ms-chart-card]')) return;
+  if (k !== metric) {
+    ctx.haptic.tap();
+    metric = k;
+    applyMetric(page);
+  }
+  if (el?.closest?.('.ms-fig, .ms-grid')) revealChart();
+}
+
+function toggleHistory() {
+  ctx.haptic.tap();
+  showAll = !showAll;
+  const page = document.querySelector('.ms-page');
+  const box = page?.querySelector('.ms-hist');
+  const more = page?.querySelector('[data-ms-more]');
+  if (!box || !more) { ctx.render(); return; }
+  const h = histParts(list());
+  box.innerHTML = h.items;
+  more.innerHTML = h.more;
+  // Свернули длинный список — кнопка могла уехать вверх за экран
+  if (!showAll) more.firstElementChild?.scrollIntoView?.({ block: 'nearest' });
+}
+
+// ── Клавиатура ──────────────────────────────────────────────────────────────
+// enterkeyhint="next" / "done" — только подпись клавиши; действие делаем сами:
+// «Далее» — фокус в следующее поле, «Готово» на последнем — убрать клавиатуру
+
+function onKey(e) {
+  if (e.key !== 'Enter' || e.isComposing) return;
+  const input = e.target?.closest?.('.ms-form input[data-bind^="ms."]');
+  if (!input) return;
+  e.preventDefault();
+  const all = [...input.closest('.ms-form').querySelectorAll('input[data-bind^="ms."]')];
+  const next = all[all.indexOf(input) + 1];
+  if (next) {
+    next.focus();
+    next.select?.();
+  } else input.blur();
+}
+
+let installed = false;
+function install() {
+  if (installed || typeof document === 'undefined') return;
+  installed = true;
+  document.addEventListener('keydown', onKey);
+  document.addEventListener('click', (e) => { lastTap = { x: e.clientX, y: e.clientY, t: Date.now() }; }, true);
+}
+
 // ── Профиль ─────────────────────────────────────────────────────────────────
 
 function profileLink() {
@@ -741,7 +989,7 @@ function profileLink() {
   let sub = 'Добавь первый замер';
   if (last) {
     const w = fieldStats(entries, 'waist');
-    sub = `Последний: ${ctx.shortDate(last[0])}`;
+    sub = `Последний: ${sd(last[0])}`;
     if (w && w.count > 1) sub += ` · талия ${w.delta ? `${signed(w.delta)} см` : 'без изменений'}`;
     else if (w) sub += ` · талия ${n1(w.value)} см`;
   }
@@ -754,31 +1002,58 @@ export default {
   screens: { msHome: screenHome },
   sheets: { msAdd: sheetAdd, msEntry: sheetEntry },
   actions: {
-    msAdd: () => ctx.openSheet('msAdd', {}),
-    msEdit: ({ date }) => ctx.openSheet('msAdd', { date }),
-    msOpen: ({ date }) => ctx.openSheet('msEntry', { date }),
-    msMetric: ({ k }) => {
-      if (!CHART_METRICS.some(([m]) => m === k) || k === metric) return;
-      ctx.haptic.tap();
-      metric = k;
-      ctx.render();
+    // Дата фиксируется при открытии: в полночь форма не перескочит на другой день
+    msAdd: (ds, el, ev) => {
+      if (justClosed(ev)) return;
+      draft = null;
+      ctx.openSheet('msAdd', { date: ctx.dkey(), fresh: 1 });
     },
-    msMore: () => { ctx.haptic.tap(); showAll = !showAll; ctx.render(); },
+    msEdit: ({ date }) => { draft = null; ctx.openSheet('msAdd', { date }); },
+    msOpen: ({ date }, el, ev) => { if (!justClosed(ev)) ctx.openSheet('msEntry', { date }); },
+    msMetric: pickMetric,
+    msMore: toggleHistory,
     msStep: stepField,
     msSave: saveForm,
     msDel: removeEntry,
   },
-  binds: Object.fromEntries(FIELDS.map((f) => [`ms.${f.k}`, () => updateChange(f.k)])),
+  binds: Object.fromEntries(FIELDS.map((f) => [`ms.${f.k}`, (v) => onInput(f.k, v)])),
   slots: { 'profile.links': profileLink },
   on: {
-    reset: () => { metric = 'waist'; showAll = false; },
+    reset: () => { metric = 'waist'; showAll = false; draft = null; },
+  },
+  unmount() {
+    if (typeof document === 'undefined') return;
+    hadPage = !!document.querySelector('.ms-page');
+    const ms = document.querySelector('.sheet [data-ms-sheet]');
+    hadSheet = ms ? ms.dataset.msSheet : null;
+    sheetScroll = ms ? document.querySelector('.sheet')?.scrollTop || 0 : 0;
+    const form = formEl();
+    if (form) captureDraft(form);
   },
   mount(root) {
-    const el = root.querySelector('[data-ms-chart]');
-    if (!el) return;
-    const pts = series(list(), metric);
-    if (pts.length < 2) return;
-    const name = CHART_METRICS.find(([k]) => k === metric)[1];
-    ctx.lineChart(el, pts, { unit: metric === 'bf' ? '%' : 'см', decimals: 1, label: `Динамика: ${name.toLowerCase()}` });
+    install();
+    const page = root.querySelector('.ms-page');
+    // Тот же экран перерисован (сохранение, смена темы) — без повторной анимации появления
+    if (page && hadPage) page.style.animation = 'none';
+    const nowSheet = root.querySelector('.sheet [data-ms-sheet]')?.dataset.msSheet || null;
+    if (hadSheet && !nowSheet) closed = tapMark();
+    if (nowSheet && nowSheet !== hadSheet) opened = tapMark();
+    const form = root.querySelector('.sheet .ms-form');
+    if (!form) draft = null;
+    if (nowSheet && nowSheet === hadSheet) {
+      // Та же шторка после перерисовки ядра: не выезжает заново, прокрутка и фокус на месте
+      const sh = root.querySelector('.sheet');
+      for (const el of [sh, root.querySelector('.sheet-bg')]) if (el) el.style.animation = 'none';
+      if (sh) sh.scrollTop = sheetScroll;
+      const fo = form && draft?.focus;
+      const input = fo && form.querySelector(`input[data-bind="ms.${fo.k}"]`);
+      if (input) {
+        input.focus({ preventScroll: true });
+        try { input.setSelectionRange(fo.s, fo.e); } catch { /* поле без выделения */ }
+      }
+    }
+    if (page) drawChart(page);
+    hadPage = false;
+    hadSheet = null;
   },
 };
