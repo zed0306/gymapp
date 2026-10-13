@@ -1,1 +1,124 @@
-/* Стили модуля «challenges» */
+/* Стили модуля «challenges» — челленджи с друзьями. Только переменные темы из style.css. */
+
+/* ── Карточки челленджей ───────────────────────────── */
+.ch-card { display: block; width: 100%; text-align: left; }
+.ch-card + .ch-card { margin-top: 12px; }
+.ch-card .ch-title { line-height: 1.3; }
+.ch-clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.3; overflow-wrap: anywhere; }
+.ch-prog { margin-top: 14px; }
+.ch-prog > .row { margin-bottom: 7px; gap: 8px; }
+.ch-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; min-width: 0; }
+.ch-mini .ch-foot { margin-top: 8px; }
+.ch-lead { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
+.ch-lead b { color: var(--text); }
+
+.ch-place { flex: none; min-width: 50px; padding: 6px 8px; border-radius: 14px; background: var(--surface-2); text-align: center; line-height: 1.05; }
+.ch-place b { display: block; font-family: var(--font-display); font-size: 19px; }
+.ch-place span { font-size: 11px; font-weight: 700; color: var(--muted); }
+.ch-place.first { background: var(--accent); color: var(--accent-ink); }
+.ch-place.first span { color: var(--accent-ink); opacity: 0.65; }
+
+/* ── Полоски прогресса ─────────────────────────────── */
+.ch-bar { height: 8px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
+.ch-bar.lg { height: 10px; }
+.ch-bar > div { height: 100%; border-radius: inherit; background: var(--muted); transition: width 0.45s ease; }
+.ch-bar.me > div { background: var(--accent); }
+.ch-bar.done > div { background: var(--ok); }
+:root[data-theme='light'] .ch-bar.me > div { background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 70%, var(--accent-text))); }
+
+/* ── Аватары (инициалы) ────────────────────────────── */
+.ch-ava { --c: var(--carbs); flex: none; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 15px; color: var(--c); background: var(--surface-2); background: color-mix(in srgb, var(--c) 18%, var(--surface)); }
+.ch-ava.sm { width: 32px; height: 32px; font-size: 14px; }
+.ch-ava.xs { width: 28px; height: 28px; font-size: 12px; box-shadow: 0 0 0 2px var(--surface); }
+.ch-ava.more { color: var(--text-2); background: var(--surface-2); font-size: 11px; }
+.ch-avas { display: flex; flex: none; padding-left: 6px; }
+.ch-avas .ch-ava { margin-left: -6px; }
+
+/* ── Таблица участников ────────────────────────────── */
+.ch-row { display: flex; align-items: center; gap: 10px; padding: 12px 0; }
+.ch-row.me { margin: 0 -10px; padding: 12px 10px; border-radius: 14px; background: var(--accent-soft); }
+.list > .ch-row.me, .list > .ch-row.me + * { border-top-color: transparent; }
+.ch-rank { flex: none; width: 18px; text-align: center; font-weight: 800; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ch-rank.top { color: var(--accent-text); }
+.ch-row-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 7px; min-width: 0; }
+.ch-name { display: flex; align-items: center; gap: 6px; min-width: 0; font-weight: 800; }
+.ch-name .n { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ch-you { flex: none; padding: 1px 7px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-size: 11px; font-weight: 800; }
+.ch-crown { flex: none; display: inline-grid; color: var(--warn); }
+.ch-val { flex: none; white-space: nowrap; }
+.ch-reached { display: flex; align-items: center; gap: 4px; margin-top: 6px; color: var(--ok); font-weight: 700; }
+.ch-reached svg.i { width: 14px; height: 14px; }
+
+/* Светлая тема: жёлтый/зелёный текст на светлом фоне слишком бледный — затемняем */
+:root[data-theme='light'] .ch-ava:not(.more) { color: color-mix(in srgb, var(--c) 55%, #000); }
+:root[data-theme='light'] .ch-reached { color: #15803d; }
+:root[data-theme='light'] .ch-crown,
+:root[data-theme='light'] .ch-win-ic { color: #b45309; }
+
+/* ── Детали ────────────────────────────────────────── */
+.ch-hero { background: linear-gradient(135deg, var(--surface-2), var(--surface)); }
+.ch-badges { flex-wrap: wrap; gap: 8px; }
+.ch-kv { margin-top: 10px; }
+.ch-kv .kv b { text-align: right; min-width: 0; }
+.ch-terms { margin-top: 0; }
+.ch-mine { margin-top: 12px; padding: 12px 14px; border-radius: 16px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+.ch-mine > .row { margin-bottom: 8px; gap: 8px; }
+.ch-win { display: flex; align-items: center; gap: 14px; margin-top: 12px; box-shadow: inset 0 0 0 1.5px var(--warn); }
+.ch-win-ic { flex: none; width: 48px; height: 48px; border-radius: 16px; display: grid; place-items: center; color: var(--warn); background: var(--surface-2); background: color-mix(in srgb, var(--warn) 16%, var(--surface)); }
+.ch-actions .list-item .icon-box { width: 40px; height: 40px; border-radius: 12px; }
+.ch-actions .ch-leave { color: var(--danger); }
+.ch-actions .ch-leave .icon-box { color: var(--danger); background: var(--surface-2); background: color-mix(in srgb, var(--danger) 12%, var(--surface)); }
+.ch-actions .list-item[disabled] { opacity: 0.6; }
+
+/* ── Приглашение и заглушка ────────────────────────── */
+.ch-invite { text-align: center; padding: 6px 6px 20px; }
+.ch-logo { width: 76px; height: 76px; margin: 4px auto 18px; border-radius: 24px; display: grid; place-items: center; background: var(--accent); color: var(--accent-ink); transform: rotate(-8deg); box-shadow: 0 12px 40px var(--accent-soft); }
+.ch-logo svg.i { width: 40px; height: 40px; stroke-width: 2.1; }
+.ch-invite-title { margin-top: 8px; overflow-wrap: anywhere; }
+.ch-invite .sub b { color: var(--text); }
+.ch-sample .list { margin-top: 6px; }
+.ch-soon svg.i { color: var(--accent-text); }
+.ch-admin { text-align: center; margin-top: 12px; }
+
+/* ── Создание ──────────────────────────────────────── */
+.ch-types .choice { padding: 14px; }
+.ch-types .choice .icon-box { width: 42px; height: 42px; }
+.ch-hint { margin-top: 6px; }
+.ch-hint b { color: var(--text); }
+.ch-preview { background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--accent-soft); }
+.ch-preview .h2 { overflow-wrap: anywhere; }
+
+/* Ошибка создания — в нижней панели над кнопкой, видна при любой прокрутке */
+.bottom-bar .inner.ch-col { flex-direction: column; gap: 8px; }
+.ch-cerr { display: flex; align-items: flex-start; gap: 8px; padding: 10px 12px; border-radius: 14px; background: var(--surface); box-shadow: inset 3px 0 0 var(--danger), inset 0 0 0 1px var(--line), var(--shadow); color: var(--text); font-size: 13.5px; font-weight: 600; line-height: 1.35; animation: fade 0.2s ease; }
+.ch-cerr[hidden] { display: none; }
+.ch-cerr > svg.i { color: var(--danger); margin-top: 1px; }
+.page.no-tabs.ch-erring { padding-bottom: calc(180px + env(safe-area-inset-bottom)); }
+.ch-fail { color: var(--danger); }
+
+/* Узкий экран: в карточке на главной важнее срок, чем слово «Челлендж» */
+@media (max-width: 379px) {
+  .ch-mini .ch-pre { display: none; }
+}
+
+/* ── Пустое состояние, ошибки, загрузка ────────────── */
+.ch-empty { text-align: center; padding: 26px 18px; }
+.ch-empty-ic { width: 64px; height: 64px; margin: 0 auto 14px; border-radius: 20px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent-text); }
+.ch-empty-ic.danger { color: var(--danger); background: var(--surface-2); background: color-mix(in srgb, var(--danger) 12%, var(--surface)); }
+.ch-ideas { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 16px; }
+.ch-ideas .chip { max-width: 100%; }
+.ch-ideas .chip svg.i { color: var(--accent-text); }
+
+.ch-err { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; padding: 10px 10px 10px 14px; border-radius: 14px; background: var(--surface); box-shadow: inset 3px 0 0 var(--danger); font-size: 13.5px; color: var(--text-2); }
+.ch-err > svg.i { color: var(--danger); }
+.ch-err .btn { flex: none; gap: 6px; padding: 0 12px; }
+
+.ch-skel { border-radius: 8px; background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%); background-size: 200% 100%; animation: ch-shimmer 1.3s linear infinite; }
+@keyframes ch-shimmer { from { background-position: 150% 0; } to { background-position: -50% 0; } }
+
+.ch-spin { animation: ch-spin 0.9s linear infinite; }
+@keyframes ch-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ch-skel, .ch-spin { animation: none; }
+}

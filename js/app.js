@@ -219,6 +219,13 @@ function push(name, params = {}) {
   render();
 }
 
+// Заменить текущий экран стека (без лишнего шага «Назад»)
+function replace(name, params = {}) {
+  if (nav.stack.length) nav.stack[nav.stack.length - 1] = { name, params };
+  else nav.stack.push({ name, params });
+  render();
+}
+
 function openSheet(name, params = {}) {
   haptic.tap();
   sheet = { name, params };
@@ -501,6 +508,8 @@ function obNext() {
     haptic.ok();
     render();
     toast('Профиль сохранён — удачи на тренировках!');
+    emit('profile', { profile: p, first: true });
+    syncServer();
     return;
   }
   ob.err = '';
@@ -1535,26 +1544,45 @@ function applyTheme() {
 // ── API сервера бота (челленджи, статистика) ─────────
 const API_KEY = 'gymapp:api';
 
+const validApi = (u) => (/^https:\/\/[^/?#\s]+/.test(u) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/.test(u) ? u.replace(/\/+$/, '') : '');
+
+// Адрес сервера: CONFIG.API_URL главнее всего. ?api=… из ссылки принимаем только при запуске
+// из Telegram (ссылку с ним формирует бот), иначе любой сайт мог бы подсунуть свой сервер
+// и получать initData пользователя.
 function apiBase() {
+  const fixed = validApi(CONFIG.API_URL || '');
+  if (fixed) return fixed;
   let fromUrl = '';
   try {
-    fromUrl = new URLSearchParams(location.search).get('api') || '';
+    fromUrl = tg?.initData ? validApi(new URLSearchParams(location.search).get('api') || '') : '';
     if (fromUrl) localStorage.setItem(API_KEY, fromUrl);
   } catch { /* нет localStorage */ }
   let saved = '';
   try { saved = localStorage.getItem(API_KEY) || ''; } catch { /* ignore */ }
-  const base = fromUrl || CONFIG.API_URL || saved || '';
-  return /^https:\/\//.test(base) || /^http:\/\/(localhost|127\.0\.0\.1)/.test(base) ? base.replace(/\/+$/, '') : '';
+  return fromUrl || validApi(saved);
 }
 
-async function api(path, { method = 'GET', body } = {}) {
+const API_TIMEOUT = 15000;
+
+async function api(path, { method = 'GET', body, timeout = API_TIMEOUT } = {}) {
   const base = apiBase();
   if (!base) throw Object.assign(new Error('Сервер не подключён'), { code: 'no-api' });
-  const res = await fetch(base + path, {
-    method,
-    headers: { 'Content-Type': 'application/json', 'X-Init-Data': tg?.initData || '' },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+  const timer = ctrl ? setTimeout(() => ctrl.abort(), timeout) : null;
+  let res;
+  try {
+    res = await fetch(base + path, {
+      method,
+      headers: { 'Content-Type': 'application/json', 'X-Init-Data': tg?.initData || '' },
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: ctrl?.signal,
+    });
+  } catch (e) {
+    const timedOut = e?.name === 'AbortError';
+    throw Object.assign(new Error(timedOut ? 'Сервер не отвечает' : 'Нет связи с сервером'), { code: timedOut ? 'timeout' : 'network' });
+  } finally {
+    clearTimeout(timer);
+  }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw Object.assign(new Error(data.error || `Ошибка ${res.status}`), { status: res.status });
   return data;
@@ -1600,7 +1628,7 @@ function fillCtx() {
     // состояние
     S: () => S, save, profile: () => S.profile, program: () => program, recompute,
     // навигация и отрисовка
-    render, push, back: goBack, openSheet, closeSheet: () => { sheet = null; render(); },
+    render, push, replace, back: goBack, openSheet, closeSheet: () => { sheet = null; render(); },
     current: () => nav.stack[nav.stack.length - 1] || null, tab: () => nav.tab, sheet: () => sheet,
     goTab: (t) => { nav.tab = t; nav.stack = []; render(); },
     // интерфейс

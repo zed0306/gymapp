@@ -68,7 +68,7 @@ js/data/*.js        тренажёры, упражнения, продукты
 | `water` | добавлена вода | `{ml, total, norm}` |
 | `food` | добавлена еда | `{item}` |
 | `weight` | записан вес | `{kg}` |
-| `profile` | сохранён профиль | `{profile}` |
+| `profile` | сохранён профиль (после анкеты — с `first: true`) | `{profile, first?}` |
 | `reset` | пользователь сбросил данные | — |
 | свои | `ctx.emit('measure')`, `ctx.emit('photo', {count})` и т. п. | |
 
@@ -78,7 +78,8 @@ js/data/*.js        тренажёры, упражнения, продукты
 S()                 текущее состояние (S.profile, S.hist, S.lifts, S.water, S.food, S.weights, ключи модулей…)
 save(key, value)    сохранить (кэш + localStorage + CloudStorage)
 profile(), program(), recompute()
-render(), push(name, params), back(), openSheet(name, params), closeSheet(), current(), sheet(), tab(), goTab(tab)
+render(), push(name, params), replace(name, params) — заменить текущий экран, back(), openSheet(name, params),
+  closeSheet(), current(), sheet(), tab(), goTab(tab)
   (кнопка data-act="push" data-name="x" data-foo="1" откроет экран x с params {foo: '1'})
 toast(text), confirm(text) → Promise<bool>, haptic.tap/impact/ok/warn()
 backHeader(title, sub), stepper(bind, value, unit, step), icon(name, cls), esc, fmt(n, d), plural(n, one, few, many)
@@ -87,7 +88,9 @@ dkey(date) 'YYYY-MM-DD', parseKey, addDays, isoWd (1=Пн), shortDate('YYYY-MM-D
 tg, tgOk(version), tgUser, inTelegram, botUsername(), openLink(url), openTelegramLink(url)
 addFoodItem({name, grams, k, p, f, c}), findFood(id), waterToday(), isTrainingDay()
 emit(event, payload), slot(name)
-api(path, {method, body}) → JSON (ошибка: err.code === 'no-api' — сервер не настроен; err.status), apiBase() → '' если нет сервера
+api(path, {method, body, timeout}) → JSON. Ошибки: err.code 'no-api' (сервер не настроен), 'timeout' (нет ответа
+  за 15 с), 'network' (нет связи); err.status — HTTP-код. apiBase() → '' если нет сервера.
+  Адрес: CONFIG.API_URL, иначе ?api=… из ссылки бота (только при запуске из Telegram), иначе сохранённый.
 startParam(), sync() — отправить сводку на сервер
 ```
 
@@ -148,7 +151,7 @@ Challenge:
 ```
 { code: 'K7M2QX', type, exercise, exercise_name, target, days, title,
   created_by: userId, created_at: ISO, starts_on: 'YYYY-MM-DD', ends_on: 'YYYY-MM-DD'|null,
-  status: 'active'|'finished', winner: {id, name}|null,
+  status: 'active'|'finished', finished_at: ISO|null, winner: {id, name}|null,
   participants: [{id, name, username, progress, reached_at: ISO|null, is_me}],  // по убыванию прогресса
   my_progress, invite_link: 'https://t.me/<bot>?start=ch_<code>' }
 ```
