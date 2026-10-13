@@ -1,0 +1,6 @@
+# HTTPS для API бота. PUBLIC_HOST — из bot/.env (например 203-0-113-5.sslip.io).
+# Caddy сам получит и будет продлевать сертификат Let's Encrypt.
+{$PUBLIC_HOST} {
+	encode gzip
+	reverse_proxy bot:8080
+}

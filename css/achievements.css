@@ -1,1 +1,142 @@
-/* Стили модуля «achievements» */
+/* Стили модуля «achievements»: медальоны, серии, экран достижений, праздничное окно */
+
+/* ── Уровни: металл обода (m1–m3), диск (d1–d2), иконка, свечение ── */
+.ach-t-bronze { --m1: #ffd9b0; --m2: #cd8446; --m3: #7a3f17; --d1: #b0652c; --d2: #5f2e0f; --ink: #ffe9d3; --tk: rgba(255, 233, 210, 0.75); --edge: rgba(255, 220, 185, 0.45); --glow: rgba(205, 132, 70, 0.45); --tier-ink: #5f2e0f; }
+.ach-t-silver { --m1: #ffffff; --m2: #c4cad5; --m3: #6f7888; --d1: #9aa3b2; --d2: #4b5262; --ink: #ffffff; --tk: rgba(255, 255, 255, 0.85); --edge: rgba(255, 255, 255, 0.45); --glow: rgba(180, 190, 205, 0.45); --tier-ink: #3f4552; }
+.ach-t-gold { --m1: #fff3b0; --m2: #f1bd35; --m3: #9c6a06; --d1: #d9a01c; --d2: #7a5203; --ink: #fff7d6; --tk: rgba(255, 246, 205, 0.85); --edge: rgba(255, 238, 170, 0.5); --glow: rgba(241, 189, 53, 0.5); --tier-ink: #6a4702; }
+.ach-t-platinum { --m1: #f6f3ff; --m2: #b5c1ff; --m3: #5d5fc9; --d1: #7f89ea; --d2: #3a3c98; --ink: #f4f2ff; --tk: rgba(246, 243, 255, 0.85); --edge: rgba(226, 230, 255, 0.5); --glow: rgba(140, 150, 255, 0.5); --tier-ink: #33358a; }
+
+/* ── Медальон ───────────────────────────────────────── */
+.ach-med { position: relative; display: inline-block; width: var(--sz, 64px); height: var(--sz, 64px); flex: none; vertical-align: middle; }
+.ach-med > svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.ach-med .s1 { stop-color: var(--m1); }
+.ach-med .s2 { stop-color: var(--m2); }
+.ach-med .s3 { stop-color: var(--m3); }
+.ach-med .s4 { stop-color: var(--d1); }
+.ach-med .s5 { stop-color: var(--d2); }
+.ach-med .tk { stroke: var(--tk); }
+.ach-med .edge { stroke: var(--edge); }
+.ach-med .sh { stroke: rgba(255, 255, 255, 0.38); }
+.ach-med .pg { stroke: var(--accent-text); }
+.ach-med:not(.locked) > svg { filter: drop-shadow(0 3px 8px var(--glow)); }
+.ach-med .ach-ic { position: absolute; inset: 0; display: grid; place-items: center; color: var(--ink); }
+.ach-med .ach-ic svg.i { width: calc(var(--sz, 64px) * 0.36); height: calc(var(--sz, 64px) * 0.36); stroke-width: 2.1; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.25)); }
+.ach-med.locked { --m1: var(--surface-3); --m2: var(--surface-3); --m3: var(--surface-3); --d1: var(--surface-2); --d2: var(--surface-2); --ink: var(--muted); --tk: var(--line); --edge: var(--line); }
+.ach-med.locked .ach-ic svg.i { filter: none; opacity: 0.8; }
+.ach-med .ach-lock { position: absolute; right: -1px; bottom: -1px; width: calc(var(--sz, 64px) * 0.34); height: calc(var(--sz, 64px) * 0.34); min-width: 20px; min-height: 20px; border-radius: 50%; background: var(--surface); color: var(--muted); display: grid; place-items: center; box-shadow: 0 0 0 1.5px var(--line); }
+.ach-med .ach-lock svg.i { width: 58%; height: 58%; stroke-width: 2.4; }
+
+/* ── Карточка на главной ────────────────────────────── */
+.ach-home { display: block; width: 100%; margin-top: 12px; text-align: left; }
+.ach-home:active { transform: scale(0.99); }
+.ach-home-top { display: flex; align-items: center; gap: 12px; }
+.ach-home-top .chev { color: var(--muted); }
+.ach-home .sub { margin-top: 2px; }
+.ach-flame { position: relative; width: 48px; height: 48px; border-radius: 16px; display: grid; place-items: center; background: var(--surface-2); color: var(--muted); flex: none; }
+.ach-flame.on { background: linear-gradient(160deg, var(--warn), var(--protein)); color: #fff; box-shadow: 0 6px 18px color-mix(in srgb, var(--protein) 35%, transparent); }
+.ach-flame b { position: absolute; right: -6px; bottom: -6px; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 999px; background: var(--text); color: var(--bg); font-size: 12px; font-weight: 800; display: grid; place-items: center; box-shadow: 0 0 0 2px var(--surface); }
+.ach-home-next { display: flex; align-items: center; gap: 12px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.ach-next-row { display: flex; justify-content: space-between; gap: 8px; }
+.ach-next-title { font-weight: 800; font-size: 14.5px; margin: 1px 0 7px; }
+.ach-home-next .meter { height: 7px; }
+
+/* ── Экран достижений ───────────────────────────────── */
+.ach-sum { display: flex; align-items: center; gap: 18px; }
+.ach-sum .ring .val { font-size: 26px; }
+.ach-tiers { display: grid; gap: 7px; }
+.ach-tier-row { display: flex; align-items: center; gap: 9px; font-size: 14px; font-weight: 700; color: var(--text-2); }
+.ach-tier-row b { margin-left: auto; color: var(--text); }
+.ach-dot { width: 14px; height: 14px; border-radius: 50%; flex: none; background: linear-gradient(135deg, var(--m1), var(--m2) 55%, var(--m3)); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12); }
+
+.ach-streaks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+.ach-st { display: flex; flex-direction: column; align-items: flex-start; background: var(--surface); border-radius: var(--radius); padding: 12px 10px 12px 12px; min-width: 0; }
+.ach-st-ic { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; background: var(--surface-2); }
+.ach-st.is-fire .ach-st-ic { background: color-mix(in srgb, var(--protein) 16%, transparent); color: var(--protein); }
+.ach-st.is-week .ach-st-ic { background: var(--accent-soft); color: var(--accent-text); }
+.ach-st.is-water .ach-st-ic { background: var(--water-soft); color: var(--water); }
+.ach-st-v { font-size: 26px; font-weight: 800; line-height: 1; margin-top: 10px; }
+.ach-st-l { font-size: 12px; font-weight: 700; color: var(--text-2); line-height: 1.25; margin-top: 4px; min-height: 30px; }
+.ach-st-b { font-size: 11.5px; color: var(--muted); font-weight: 700; margin-top: auto; padding-top: 6px; }
+
+.ach-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+@media (min-width: 470px) { .ach-grid { grid-template-columns: repeat(4, 1fr); } }
+@media (max-width: 370px) { .ach-grid { gap: 8px; } .ach-cell { padding: 12px 3px 10px; } .ach-name { font-size: 11.5px; letter-spacing: -0.01em; } }
+.ach-cell { display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 14px 6px 12px; border-radius: var(--radius); background: var(--surface); text-align: center; min-width: 0; transition: transform 0.12s; }
+.ach-cell:active { transform: scale(0.96); }
+.ach-name { font-weight: 800; font-size: 12.5px; line-height: 1.2; min-height: 30px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: break-word; hyphens: auto; }
+.ach-cell:not(.on) .ach-name { color: var(--text-2); }
+.ach-meta { font-size: 11.5px; color: var(--muted); font-weight: 700; line-height: 1.1; }
+.ach-cell.on .ach-meta { color: var(--accent-text); }
+
+/* ── Шторка достижения ──────────────────────────────── */
+.ach-detail { text-align: center; padding-top: 4px; }
+.ach-detail-med { position: relative; display: grid; place-items: center; margin: 4px auto 12px; width: 180px; height: 150px; }
+.ach-detail-med::before { content: ''; position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(closest-side, var(--glow, transparent), transparent); opacity: 0.8; }
+.ach-tier { display: inline-flex; align-items: center; height: 26px; padding: 0 12px; border-radius: 999px; font-size: 12px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; background: linear-gradient(135deg, var(--m1), var(--m2)); color: var(--tier-ink); }
+.ach-tier.locked { background: var(--surface-2); color: var(--muted); }
+.ach-got { display: inline-flex; align-items: center; gap: 8px; margin-top: 16px; padding: 10px 14px; border-radius: 14px; background: var(--accent-soft); color: var(--accent-text); font-weight: 800; font-size: 14px; }
+.ach-prog { margin-top: 16px; padding: 14px; border-radius: 16px; background: var(--surface-2); text-align: left; }
+.ach-prog .row { margin-bottom: 8px; }
+
+/* ── «Тренировка завершена» ─────────────────────────── */
+.ach-done { margin-top: 14px; padding: 14px; border-radius: 16px; background: var(--surface-2); }
+.ach-done-head { display: flex; align-items: center; gap: 8px; color: var(--accent-text); }
+.ach-done-head b { color: var(--text); flex: 1; }
+.ach-done-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 8px; margin-top: 12px; }
+.ach-mini { width: 80px; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; font-size: 12px; font-weight: 800; line-height: 1.2; min-width: 0; }
+.ach-mini span { overflow-wrap: anywhere; }
+.ach-done-streak { display: flex; align-items: center; gap: 8px; justify-content: center; margin-top: 12px; font-size: 13.5px; color: var(--text-2); text-align: center; }
+.ach-done-streak svg { color: var(--protein); }
+.ach-done-streak b { color: var(--text); }
+
+/* ── Праздничное окно ───────────────────────────────── */
+/* Карточка центрируется через margin:auto — на низком экране (альбомная ориентация) окно
+   прокручивается, а не обрезается сверху и снизу. Фон и конфетти — fixed, не уезжают при прокрутке. */
+.ach-ov { position: fixed; inset: 0; z-index: 70; display: flex; padding: 24px 16px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+.ach-ov-bg { position: fixed; inset: 0; background: rgba(5, 6, 8, 0.74); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); animation: ach-fade 0.25s ease; }
+.ach-ov-card { position: relative; flex: none; width: 100%; max-width: 360px; margin: auto; padding: 22px 20px 20px; border-radius: 28px; background: var(--surface); box-shadow: var(--shadow); text-align: center; animation: ach-card 0.38s cubic-bezier(0.2, 1, 0.3, 1); overflow: hidden; }
+.ach-ov-card::before { content: ''; position: absolute; left: 50%; top: 22px; width: 300px; height: 300px; margin-left: -150px; border-radius: 50%; background: radial-gradient(closest-side, var(--glow), transparent 72%); pointer-events: none; }
+.ach-ov-kicker { position: relative; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-2); }
+.ach-ov-kicker svg { color: var(--accent-text); }
+.ach-ov-med { position: relative; display: grid; place-items: center; height: 176px; margin: 8px 0 10px; }
+.ach-ov-med::before { content: ''; position: absolute; width: 200px; height: 200px; border-radius: 50%; background: repeating-conic-gradient(from 0deg, var(--glow) 0deg 7deg, transparent 7deg 22.5deg); -webkit-mask: radial-gradient(closest-side, #000 30%, transparent); mask: radial-gradient(closest-side, #000 30%, transparent); opacity: 0.7; animation: ach-spin 14s linear infinite; }
+.ach-ov-med .ach-med { --sz: 148px; animation: ach-pop 0.6s cubic-bezier(0.2, 1.4, 0.35, 1) 0.08s both; }
+.ach-ov-title { margin-top: 12px; position: relative; }
+.ach-ov .sub { position: relative; margin-top: 6px; }
+.ach-ov .ach-tier { position: relative; }
+.ach-ov-btn { position: relative; margin-top: 20px; }
+
+/* Низкий экран (iPhone SE в Telegram, альбомная ориентация): компактнее */
+@media (max-height: 560px) {
+  .ach-ov { padding: 12px 16px; }
+  .ach-ov-card { padding: 14px 16px 16px; border-radius: 24px; }
+  .ach-ov-card::before { top: 4px; width: 220px; height: 220px; margin-left: -110px; }
+  .ach-ov-med { height: 124px; margin: 4px 0 6px; }
+  .ach-ov-med::before { width: 150px; height: 150px; }
+  .ach-ov-med .ach-med { --sz: 108px; }
+  .ach-ov-title { margin-top: 8px; font-size: 22px; }
+  .ach-ov-btn { margin-top: 14px; }
+}
+
+/* Повторная отрисовка того же окна — без повторного появления и конфетти */
+.ach-ov.again .ach-ov-bg, .ach-ov.again .ach-ov-card, .ach-ov.again .ach-ov-med .ach-med { animation: none; }
+.ach-ov.again .ach-confetti { display: none; }
+
+.ach-confetti { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+.ach-confetti i { position: absolute; top: -24px; left: var(--x); width: var(--w); height: var(--h); background: var(--c); border-radius: 2px; opacity: 0; animation: ach-fall var(--t) cubic-bezier(0.3, 0.5, 0.5, 1) var(--d) forwards; }
+
+@keyframes ach-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ach-card { from { opacity: 0; transform: translateY(18px) scale(0.96); } to { opacity: 1; transform: none; } }
+@keyframes ach-pop { 0% { opacity: 0; transform: scale(0.4) rotate(-25deg); } 70% { opacity: 1; } 100% { opacity: 1; transform: none; } }
+@keyframes ach-spin { to { transform: rotate(360deg); } }
+@keyframes ach-fall {
+  0% { opacity: 1; transform: translate3d(0, 0, 0) rotate(0deg); }
+  85% { opacity: 1; }
+  100% { opacity: 0; transform: translate3d(var(--dx), calc(100vh + 40px), 0) rotate(var(--r)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ach-ov-bg, .ach-ov-card, .ach-ov-med .ach-med, .ach-ov-med::before { animation: none; }
+  .ach-confetti i { animation: none; opacity: 0.85; top: var(--y); transform: rotate(var(--r0)); }
+  .ach-cell, .ach-home { transition: none; }
+}

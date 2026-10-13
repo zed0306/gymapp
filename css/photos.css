@@ -1,1 +1,149 @@
-/* Стили модуля «photos» */
+/* Стили модуля «photos» — фото до/после */
+
+/* ── Общее ─────────────────────────────────────────── */
+.ph-file { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; pointer-events: none; }
+.ph-add { cursor: pointer; }
+.ph-busy { pointer-events: none; }
+.ph-spin { width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid currentColor; border-right-color: transparent; display: inline-block; flex: none; animation: ph-spin 0.8s linear infinite; }
+@keyframes ph-spin { to { transform: rotate(360deg); } }
+.ph-danger { color: var(--danger); background: rgba(255, 92, 92, 0.12); }
+.ph-link { color: var(--accent-text); font-weight: 800; font-size: inherit; text-decoration: underline; text-underline-offset: 2px; }
+/* На фоне страницы (а не в карточке) surface-2 почти сливается в светлой теме — поднимаем до surface */
+.ph > .notice { background: var(--surface); }
+.ph .ph-filter .chip:not(.on) { background: var(--surface); }
+.ph .bottom-bar .btn.ghost { background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--line); }
+.ph-note, .ph-limit { margin-top: 12px; }
+.ph-private b { color: var(--text); }
+.ph-foot { text-align: center; margin: 16px 8px 0; color: var(--muted); }
+
+.ph-loading { display: flex; align-items: center; gap: 12px; margin-top: 12px; color: var(--text-2); }
+.ph-errcard { margin-top: 12px; }
+.ph-errcard .btn { margin-top: 12px; }
+
+.ph-cmp-btn { padding: 0 18px; }
+@media (max-width: 359px) {
+  .ph-cmp-btn { width: 52px; padding: 0; }
+  .ph-cmp-btn span { display: none; }
+}
+
+/* ── Пустое состояние ──────────────────────────────── */
+.ph-empty { text-align: center; padding: 24px 18px 22px; margin-top: 12px; }
+.ph-empty-t { margin-top: 8px; }
+.ph-art { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 18px; }
+.ph-frame { width: 70px; aspect-ratio: 3 / 4; border-radius: 14px; background: var(--surface-2); color: var(--muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; box-shadow: inset 0 0 0 1.5px var(--line); }
+.ph-frame span { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; }
+.ph-frame.on { background: var(--accent-soft); color: var(--accent-text); box-shadow: inset 0 0 0 1.5px var(--accent); }
+.ph-arrow { color: var(--muted); }
+
+/* ── Советы ────────────────────────────────────────── */
+.ph-tips-card { margin-top: 14px; }
+.ph-tips-h { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; }
+.ph-chev { color: var(--muted); display: grid; place-items: center; transition: transform 0.2s; }
+.ph-chev.open { transform: rotate(90deg); }
+.ph-tips { margin-top: 10px; }
+.ph-tip { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; }
+.ph-tip + .ph-tip { border-top: 1px solid var(--line); }
+.ph-tip .icon-box { width: 36px; height: 36px; border-radius: 11px; color: var(--accent-text); }
+.ph-tip b { font-size: 14.5px; }
+
+/* ── Сетка ─────────────────────────────────────────── */
+.ph-filter { margin-top: 16px; gap: 6px; }
+.ph-filter .chip { height: 36px; padding: 0 12px; }
+.ph-n { font-size: 12px; opacity: 0.55; margin-left: 1px; }
+.ph-group { margin-top: 18px; }
+.ph-gh { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 0 2px 8px; }
+.ph-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+@media (min-width: 480px) { .ph-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.ph-cell { position: relative; display: block; width: 100%; aspect-ratio: 3 / 4; border-radius: 14px; overflow: hidden; background: var(--surface-2); transition: transform 0.12s ease; }
+.ph-cell:active { transform: scale(0.97); }
+.ph-cell img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 40%; -webkit-user-drag: none; user-select: none; }
+.ph-cell::after { content: ''; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 3px transparent; pointer-events: none; transition: box-shadow 0.15s; }
+.ph-cell.on::after { box-shadow: inset 0 0 0 3px var(--accent); }
+.ph-cell[disabled] { opacity: 0.35; }
+.ph-tag { position: absolute; left: 6px; bottom: 6px; max-width: calc(100% - 12px); padding: 3px 8px; border-radius: 999px; background: rgba(11, 12, 15, 0.62); color: #fff; font-size: 11px; font-weight: 700; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+
+/* ── Просмотр ──────────────────────────────────────── */
+.ph-stage { position: relative; height: calc(var(--tg-viewport-stable-height, 100vh) - 236px); min-height: 280px; border-radius: var(--radius); overflow: hidden; background: var(--surface); }
+.ph-stage img { width: 100%; height: 100%; object-fit: contain; user-select: none; -webkit-user-drag: none; }
+.ph-nav { position: absolute; top: 50%; width: 42px; height: 42px; margin-top: -21px; border-radius: 50%; background: rgba(11, 12, 15, 0.5); color: #fff; display: grid; place-items: center; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.ph-nav:active { transform: scale(0.94); }
+.ph-nav.l { left: 10px; }
+.ph-nav.r { right: 10px; }
+.ph-count { position: absolute; top: 10px; right: 10px; padding: 4px 10px; border-radius: 999px; background: rgba(11, 12, 15, 0.55); color: #fff; font-size: 12px; font-weight: 800; }
+.ph-facts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+.ph-facts .badge:not(.accent) { background: var(--surface); }
+.ph-del { padding: 0 18px; }
+@media (max-width: 359px) {
+  .ph-del { width: 52px; padding: 0; }
+  .ph-del span { display: none; }
+}
+
+/* ── Сравнение ─────────────────────────────────────── */
+.ph-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 16px; background: var(--surface); margin-bottom: 12px; }
+.ph-seg button { height: 40px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-weight: 800; font-size: 14px; color: var(--text-2); transition: background 0.15s, color 0.15s; }
+.ph-seg button.on { background: var(--accent); color: var(--accent-ink); }
+
+.ph-cmp {
+  --ph-v: 0.5;
+  --ph-x: calc(28px + (100% - 56px) * var(--ph-v));
+  position: relative; width: 100%; aspect-ratio: 3 / 4; max-height: 58vh; border-radius: var(--radius); overflow: hidden;
+  background: var(--surface-2); user-select: none; -webkit-user-select: none; touch-action: pan-y;
+}
+.ph-cmp img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 40%; pointer-events: none; -webkit-user-drag: none; }
+.ph-cmp .ph-top { -webkit-clip-path: inset(0 calc(100% - var(--ph-x)) 0 0); clip-path: inset(0 calc(100% - var(--ph-x)) 0 0); }
+.ph-handle { position: absolute; top: 0; bottom: 0; left: var(--ph-x); width: 0; pointer-events: none; z-index: 2; }
+.ph-handle::before { content: ''; position: absolute; top: 0; bottom: 0; left: -1.5px; width: 3px; background: #fff; box-shadow: 0 0 10px rgba(0, 0, 0, 0.45); }
+.ph-knob { position: absolute; top: 50%; left: 0; transform: translate(-50%, -50%); width: 44px; height: 44px; border-radius: 50%; background: #fff; color: #0b0c0f; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35); }
+.ph-knob svg.i { width: 15px; height: 15px; stroke-width: 2.8; margin: 0 -2px; }
+/* Ловит касания только ручка (полоса 56 px по линии): тап или прокрутка пальцем по фото
+   не переносит шторку (Android), и поведение одинаковое с iOS */
+.ph-range {
+  position: absolute; inset: 0; z-index: 3; width: 100%; height: 100%; margin: 0; padding: 0;
+  background: transparent; -webkit-appearance: none; appearance: none; opacity: 0; touch-action: pan-y; pointer-events: none;
+}
+.ph-range::-webkit-slider-runnable-track { height: 100%; background: transparent; border: 0; }
+.ph-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 56px; height: var(--ph-h, 400px); background: transparent; border: 0; pointer-events: auto; cursor: ew-resize; }
+.ph-range::-moz-range-track { height: 100%; background: transparent; border: 0; }
+.ph-range::-moz-range-thumb { width: 56px; height: var(--ph-h, 400px); background: transparent; border: 0; border-radius: 0; pointer-events: auto; cursor: ew-resize; }
+.ph-range:focus-visible ~ .ph-handle .ph-knob { box-shadow: 0 0 0 3px var(--accent), 0 4px 16px rgba(0, 0, 0, 0.35); }
+.ph-lbl { position: absolute; top: 10px; z-index: 3; padding: 5px 10px; border-radius: 999px; background: rgba(11, 12, 15, 0.62); color: #fff; font-size: 12px; font-weight: 800; pointer-events: none; white-space: nowrap; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.ph-lbl.l { left: 10px; }
+.ph-lbl.r { right: 10px; }
+.ph-hint { text-align: center; margin-top: 8px; }
+
+.ph-side { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.ph-sbox { position: relative; aspect-ratio: 3 / 4; border-radius: 16px; overflow: hidden; background: var(--surface-2); }
+.ph-sbox img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 40%; -webkit-user-drag: none; }
+
+.ph-sum { display: flex; align-items: baseline; justify-content: center; flex-wrap: wrap; gap: 4px 8px; margin: 14px 0 12px; color: var(--text-2); font-weight: 700; }
+.ph-sum b { font-family: var(--font-display); font-size: 22px; color: var(--text); }
+.ph-sum b.good { color: var(--accent-text); }
+.ph-caps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+.ph-cap { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 12px 14px; border-radius: 18px; background: var(--surface); text-align: left; min-width: 0; }
+.ph-cap:active { transform: scale(0.98); }
+.ph-cap b { font-size: 15px; line-height: 1.25; }
+.ph-cap-k { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.ph-cap-chg { display: inline-flex; align-items: center; gap: 5px; margin-top: 8px; font-size: 12.5px; font-weight: 800; color: var(--accent-text); }
+.ph-cap-chg svg.i { width: 15px; height: 15px; }
+
+/* ── Шторки ────────────────────────────────────────── */
+.ph-prev { height: clamp(150px, 28vh, 230px); margin-top: 14px; border-radius: 18px; overflow: hidden; background: var(--surface-2); }
+.ph-prev img { width: 100%; height: 100%; object-fit: contain; }
+.ph-lock { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 10px; font-size: 12.5px; font-weight: 700; color: var(--text-2); }
+.ph-lock svg.i { width: 15px; height: 15px; color: var(--accent-text); }
+.ph-flabel { font-size: 13px; color: var(--text-2); font-weight: 700; margin: 14px 2px 8px; }
+.ph-pose { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.ph-pose .chip { justify-content: center; padding: 0 8px; }
+.ph-field { background: var(--surface-2); margin-top: 12px; }
+.ph-field + .ph-field { margin-top: 10px; }
+.ph-date { width: 100%; height: 44px; border: 0; outline: none; background: transparent; font-size: 20px; font-weight: 800; padding: 0; font-variant-numeric: tabular-nums; min-width: 0; }
+.ph-date::-webkit-calendar-picker-indicator { opacity: 0.7; cursor: pointer; }
+.ph-pick-sub { margin-top: 4px; }
+.ph-pick { margin-top: 12px; }
+
+/* ── Шторка с готовым коллажем ─────────────────────── */
+.ph-col-hint { margin-top: 4px; }
+.ph-col-img { margin-top: 14px; border-radius: 16px; overflow: hidden; background: #0b0c0f; }
+.ph-col-img img { display: block; width: 100%; height: auto; max-height: 58vh; object-fit: contain; -webkit-touch-callout: default; -webkit-user-select: auto; user-select: auto; }
+.ph-col-btn { margin-top: 12px; }
+.ph-col-btn + .ph-col-btn { margin-top: 8px; }

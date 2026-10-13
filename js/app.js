@@ -191,7 +191,8 @@ function render() {
 
 function syncBackButton() {
   if (!nativeBack) return;
-  const need = !!sheet || nav.stack.length > 0 || (ob && ob.step > 0 && !S.profile?.done);
+  const need = !!sheet || nav.stack.length > 0 || (ob && ob.step > 0 && !S.profile?.done)
+    || getFeatures().some((f) => { try { return !!f.wantsBack?.(); } catch { return false; } });
   if (need) tg.BackButton.show();
   else tg.BackButton.hide();
   if (tgOk('6.2')) {
@@ -202,6 +203,10 @@ function syncBackButton() {
 
 function goBack() {
   haptic.tap();
+  // Модуль может перехватить «Назад» (например, закрыть своё окно поверх экрана)
+  for (const f of getFeatures()) {
+    try { if (f.back?.()) return; } catch (e) { console.error(e); }
+  }
   if (rest) { rest = null; render(); return; }
   if (sheet) { sheet = null; render(); return; }
   if (nav.stack.length) { nav.stack.pop(); edit = null; render(); return; }
@@ -1288,7 +1293,7 @@ function botUsername() {
 const ACTIONS = {
   back: () => goBack(),
   tab: ({ tab }) => { haptic.tap(); nav.tab = tab; nav.stack = []; render(); },
-  push: ({ name }) => { edit = null; foodQuery = ''; push(name); },
+  push: ({ name, act, ...params }) => { edit = null; foodQuery = ''; push(name, params); },
   sheet: ({ name, id }) => openSheet(name, { id }),
   closeSheet: () => { sheet = null; render(); },
   link: (_, el, e) => {
@@ -1312,7 +1317,7 @@ const ACTIONS = {
     const decimals = String(step).includes('.') ? 1 : 0;
     const v = Math.max(0, +((+input.value || 0) + step).toFixed(decimals));
     input.value = v;
-    BINDS[bind]?.(String(v), {}, input);
+    (BINDS[bind] || findIn('binds', bind))?.(String(v), {}, input);
   },
 
   // Тренировки
@@ -1596,7 +1601,7 @@ function fillCtx() {
     S: () => S, save, profile: () => S.profile, program: () => program, recompute,
     // навигация и отрисовка
     render, push, back: goBack, openSheet, closeSheet: () => { sheet = null; render(); },
-    current: () => nav.stack[nav.stack.length - 1] || null, tab: () => nav.tab,
+    current: () => nav.stack[nav.stack.length - 1] || null, tab: () => nav.tab, sheet: () => sheet,
     goTab: (t) => { nav.tab = t; nav.stack = []; render(); },
     // интерфейс
     toast, confirm: confirmDialog, haptic, backHeader, stepper, icon, esc, fmt, plural, ring, meter, lineChart,

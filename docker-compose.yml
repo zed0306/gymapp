@@ -1,0 +1,50 @@
+# Бот GymApp + HTTPS-прокси Caddy. Инструкция — bot/DEPLOY.md.
+#   cp bot/.env.example bot/.env && chmod 600 bot/.env   # вписать BOT_TOKEN, ADMIN_IDS, PUBLIC_HOST, PUBLIC_URL
+#   ln -s bot/.env .env                                  # отсюда Compose подставит ${PUBLIC_HOST}
+#   docker compose up -d
+services:
+  # Один раз отдаёт папку ./data пользователю бота (в контейнере бот работает не от root)
+  data-perms:
+    image: busybox:1.36
+    command: ["chown", "-R", "10001:10001", "/data"]
+    volumes:
+      - ./data:/data
+    restart: "no"
+
+  bot:
+    build: ./bot
+    env_file: bot/.env
+    environment:
+      DB_PATH: /data/gymapp.db
+      API_HOST: 0.0.0.0
+      API_PORT: "8080"
+    volumes:
+      - ./data:/data
+    expose:
+      - "8080"
+    depends_on:
+      data-perms:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2
+    # Caddy нужен только адрес сайта (PUBLIC_HOST в Caddyfile). Весь bot/.env с токеном ему
+    # не отдаём: значение подставляет Compose из .env в корне — это ссылка на bot/.env.
+    environment:
+      PUBLIC_HOST: "${PUBLIC_HOST:?впиши PUBLIC_HOST в bot/.env и сделай ссылку: ln -s bot/.env .env}"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - bot
+    restart: unless-stopped
+
+volumes:
+  caddy_data:   # сертификаты Let's Encrypt — не удаляй, иначе Caddy будет выпускать их заново
+  caddy_config:

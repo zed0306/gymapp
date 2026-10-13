@@ -41,6 +41,8 @@ js/data/*.js        тренажёры, упражнения, продукты
 | `on` | `{event: (payload) => void}` | подписки на события |
 | `mount` | `(root) => void` | после каждой отрисовки (графики, камера, object URL) |
 | `unmount` | `() => void` | перед каждой отрисовкой (остановить камеру, отозвать URL) |
+| `back` | `() => boolean` | системная «Назад»: вернуть `true`, если модуль сам обработал нажатие (закрыл своё окно) |
+| `wantsBack` | `() => boolean` | показать системную «Назад», даже если нет экрана/шторки (открыто окно модуля) |
 
 Имена `actions`, `binds`, `screens`, `sheets` — глобальные: начинай их с префикса модуля
 (`ach…`, `ch…`, `ms…`, `ph…`, `bc…`).
@@ -76,7 +78,8 @@ js/data/*.js        тренажёры, упражнения, продукты
 S()                 текущее состояние (S.profile, S.hist, S.lifts, S.water, S.food, S.weights, ключи модулей…)
 save(key, value)    сохранить (кэш + localStorage + CloudStorage)
 profile(), program(), recompute()
-render(), push(name, params), back(), openSheet(name, params), closeSheet(), current(), tab(), goTab(tab)
+render(), push(name, params), back(), openSheet(name, params), closeSheet(), current(), sheet(), tab(), goTab(tab)
+  (кнопка data-act="push" data-name="x" data-foo="1" откроет экран x с params {foo: '1'})
 toast(text), confirm(text) → Promise<bool>, haptic.tap/impact/ok/warn()
 backHeader(title, sub), stepper(bind, value, unit, step), icon(name, cls), esc, fmt(n, d), plural(n, one, few, many)
 ring({value,max,size,stroke,color,track,center}), meter(value, max, color), lineChart(el, [{label,value}], {unit,decimals,label})

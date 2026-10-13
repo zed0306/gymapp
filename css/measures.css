@@ -1,1 +1,135 @@
-/* Стили модуля «measures» */
+/* Модуль «Замеры тела» (js/features/measures.js) */
+.ms-page {
+  --ms-line: color-mix(in srgb, var(--text) 22%, transparent);
+  --ms-edge: color-mix(in srgb, var(--text) 30%, transparent);
+}
+.ms-card + .ms-card { margin-top: 12px; }
+.ms-stale + .ms-card { margin-top: 12px; }
+
+/* ── Фигура ─────────────────────────────────────────── */
+.ms-fig { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); margin: 10px -4px 0; }
+.ms-body { display: block; width: 140px; height: 280px; overflow: visible; }
+.ms-body .floor { fill: var(--text); opacity: 0.06; }
+.ms-body .sil-edge path { fill: var(--ms-edge); stroke: var(--ms-edge); stroke-width: 3.2; stroke-linejoin: round; }
+.ms-body .sil path { fill: var(--surface-3); }
+.ms-body .hair { fill: color-mix(in srgb, var(--text) 26%, var(--surface-3)); }
+.ms-body .ext { fill: none; stroke: var(--ms-line); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.ms-body .tf { fill: none; stroke: var(--accent-text); stroke-width: 2.6; stroke-linecap: round; }
+.ms-body .tb { fill: none; stroke: var(--accent-text); stroke-width: 1.3; stroke-dasharray: 2.5 2.5; opacity: 0.5; }
+.ms-body .dot { fill: var(--accent-text); }
+.ms-body .tape.on .tf { stroke-width: 4; }
+.ms-body .tape.on .dot { r: 3.6; }
+.ms-body .tape.off .tf { stroke: var(--muted); stroke-dasharray: 3 3; stroke-width: 1.8; }
+.ms-body .tape.off .tb { stroke: var(--muted); }
+.ms-body .tape.off .dot { fill: var(--muted); }
+
+.ms-col { position: relative; min-width: 0; }
+.ms-lbl { position: absolute; left: 0; right: 0; display: flex; flex-direction: column; align-items: stretch; text-align: left; color: var(--text); }
+.ms-lbl.up { margin-top: -24px; }
+.ms-lbl.down { margin-top: -10px; }
+.ms-lbl.down .t { order: 2; }
+.ms-col.r .ms-lbl { text-align: right; }
+.ms-lbl .t { display: block; height: 14px; font-size: 11px; line-height: 14px; font-weight: 700; color: var(--muted); white-space: nowrap; }
+.ms-lbl .vr { display: flex; align-items: center; gap: 6px; height: 20px; }
+.ms-col.r .ms-lbl .vr { flex-direction: row-reverse; }
+.ms-lbl .v { font-size: 16px; line-height: 20px; font-weight: 800; white-space: nowrap; }
+.ms-lbl .ln { flex: 1; min-width: 4px; height: 1px; background: var(--ms-line); }
+.ms-lbl.on .v { color: var(--accent-text); }
+.ms-lbl.on .t { color: var(--text-2); }
+.ms-lbl.off .v { color: var(--muted); }
+
+/* ── Карточки % жира и WHtR ─────────────────────────── */
+.ms-big { font-family: var(--font-display); font-size: 30px; font-weight: 700; line-height: 1.1; margin-top: 4px; }
+.ms-big small { font-family: var(--font); font-size: 16px; font-weight: 800; color: var(--muted); margin-left: 2px; }
+
+.ms-pill { --c: var(--text-2); display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 800; white-space: nowrap; flex: none;
+  background: color-mix(in srgb, var(--c) 15%, transparent); color: color-mix(in srgb, var(--c) 70%, var(--text)); }
+.ms-pill::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--c); flex: none; }
+.ms-pill.ok { --c: var(--ok); }
+.ms-pill.warn { --c: var(--warn); }
+.ms-pill.danger { --c: var(--danger); }
+.ms-pill.neutral { --c: var(--text-2); }
+.ms-pill.low { --c: var(--carbs); }
+
+.ms-scale { position: relative; margin: 14px 0 8px; }
+.ms-scale .bar { display: flex; gap: 2px; height: 10px; border-radius: 999px; overflow: hidden; }
+.ms-scale .bar > i { display: block; opacity: 0.38; }
+.ms-scale .bar > i.on { opacity: 1; }
+.ms-scale .mk { position: absolute; top: -4px; width: 4px; height: 18px; border-radius: 2px; background: var(--text); transform: translateX(-50%); box-shadow: 0 0 0 2px var(--surface); }
+.ms-scale .ticks { position: relative; height: 16px; margin-top: 4px; }
+.ms-scale .ticks span { position: absolute; top: 0; transform: translateX(-50%); font-size: 11px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.ms-mass { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+.ms-mass > div { display: flex; gap: 10px; align-items: flex-start; background: var(--surface-2); border-radius: 14px; padding: 10px 12px; min-width: 0; }
+.ms-mass .dot { width: 8px; height: 8px; margin-top: 5px; }
+.ms-mass b { font-size: 16px; }
+.ms-note { display: flex; gap: 8px; align-items: flex-start; margin-top: 12px; font-size: 12.5px; color: var(--muted); line-height: 1.4; }
+.ms-note svg.i { width: 16px; height: 16px; margin-top: 1px; }
+
+.ms-stale { margin-bottom: 0; }
+.ms-stale svg.i { color: var(--warn); }
+.ms-stale b { color: var(--text); }
+
+/* ── Сетка показателей ──────────────────────────────── */
+.ms-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (min-width: 440px) { .ms-grid { grid-template-columns: repeat(3, 1fr); } }
+.ms-stat { width: 100%; text-align: left; min-width: 0; box-shadow: inset 0 0 0 2px transparent; transition: box-shadow 0.15s; }
+.ms-stat.on { box-shadow: inset 0 0 0 2px var(--accent); }
+.ms-stat .v { white-space: nowrap; }
+.ms-delta { display: inline-flex; align-items: center; gap: 4px; margin-top: 6px; font-size: 12.5px; font-weight: 800; color: var(--text-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ms-delta svg.i { width: 14px; height: 14px; }
+.ms-delta.good { color: color-mix(in srgb, var(--ok) 72%, var(--text)); }
+.kv .ms-delta { margin-top: 0; }
+.ms-kv { align-items: center; }
+.ms-kv > span:first-child { flex: none; }
+
+/* ── График и история ───────────────────────────────── */
+.ms-chips { gap: 6px; }
+.ms-chips .chip { height: 34px; padding: 0 12px; font-size: 13.5px; }
+.ms-chart-empty { display: flex; gap: 12px; align-items: flex-start; color: var(--text-2); font-size: 14px; padding: 4px 0; }
+.ms-chart-empty svg.i { color: var(--muted); }
+.ms-chart-empty b { color: var(--text); }
+
+.ms-hist .list-item { padding: 10px 0; }
+.ms-day { width: 46px; height: 50px; border-radius: 14px; background: var(--surface-2); display: grid; place-content: center; text-align: center; line-height: 1.1; flex: none; }
+.ms-day b { font-size: 16px; }
+.ms-day span { font-size: 11px; color: var(--muted); font-weight: 700; }
+
+.ms-details { margin-top: 12px; }
+.ms-details summary svg.i { transition: transform 0.2s; }
+.ms-details[open] summary svg.i { transform: rotate(90deg); }
+.ms-how { margin: 0; padding-left: 18px; font-size: 14px; color: var(--text-2); }
+.ms-how li + li { margin-top: 6px; }
+.ms-how b { color: var(--text); }
+
+/* ── Форма замера ───────────────────────────────────── */
+.ms-form { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+.ms-field { display: flex; align-items: center; gap: 10px; background: var(--surface-2); border-radius: 16px; padding: 10px 10px 10px 14px; box-shadow: inset 0 0 0 2px transparent; transition: box-shadow 0.15s; }
+.ms-field.bad { box-shadow: inset 0 0 0 2px var(--danger); }
+.ms-field .txt { flex: 1; min-width: 0; }
+.ms-field .nm { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-weight: 800; font-size: 15px; line-height: 1.25; }
+.ms-field .hint { font-size: 12px; line-height: 1.3; color: var(--muted); margin-top: 2px; }
+.ms-field .stepper { flex: none; width: 160px; gap: 4px; }
+.ms-field .stepper .icon-btn { width: 36px; height: 36px; border-radius: 11px; background: var(--surface); }
+.ms-field .stepper input { font-size: 20px; padding: 2px 0; }
+.ms-field .stepper input::placeholder { color: var(--muted); }
+.ms-field .stepper .unit { width: auto; font-size: 12.5px; }
+.ms-chg { font-size: 11.5px; font-weight: 800; padding: 1px 7px; border-radius: 999px; background: var(--surface-3); color: var(--text-2); font-variant-numeric: tabular-nums; }
+.ms-chg:empty { display: none; }
+.ms-chg.good { background: color-mix(in srgb, var(--ok) 16%, transparent); color: color-mix(in srgb, var(--ok) 72%, var(--text)); }
+
+/* Светлая тема: статусные цвета ядра (--ok, --warn) на белом слишком светлые для текста —
+   темнее подмешиваем --text, чтобы контраст был не ниже 4,5:1 */
+:root[data-theme='light'] .ms-pill { color: color-mix(in srgb, var(--c) 50%, var(--text)); }
+:root[data-theme='light'] .ms-delta.good,
+:root[data-theme='light'] .ms-chg.good { color: color-mix(in srgb, var(--ok) 50%, var(--text)); }
+
+/* Узкие экраны (320–360 px) */
+@media (max-width: 360px) {
+  .ms-field { padding-left: 12px; gap: 8px; }
+  .ms-field .stepper { width: 146px; gap: 3px; }
+  .ms-field .stepper .icon-btn { width: 32px; height: 32px; border-radius: 10px; }
+  .ms-field .stepper input { font-size: 18px; }
+  .ms-mass > div { padding: 10px; }
+  .ms-mass .dot { display: none; }
+}
