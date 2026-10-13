@@ -37,7 +37,7 @@ js/data/*.js        тренажёры, упражнения, продукты
 | `actions` | `{name: (dataset, el, event) => void}` | клики по `[data-act="name"]`; `dataset` — data-атрибуты элемента |
 | `binds` | `{name: (value, dataset, el) => void}` | ввод в `input/textarea/select[data-bind="name"]`; для `input[type=file][data-file="name"]` первым аргументом приходит `FileList` |
 | `slots` | `{slot: () => html}` | вставки в экраны ядра (см. ниже) |
-| `foods` | `() => Food[]` | доп. продукты для поиска в дневнике: `{id, name, k, p, f, c, unit?, unitName?}` на 100 г |
+| `foods` | `() => Food[]` | доп. продукты для поиска в дневнике: `{id, name, k, p, f, c, unit?, unitName?}` на 100 г; `unitName` — строка («шт») или формы `[one, few, many]` |
 | `on` | `{event: (payload) => void}` | подписки на события |
 | `mount` | `(root) => void` | после каждой отрисовки (графики, камера, object URL) |
 | `unmount` | `() => void` | перед каждой отрисовкой (остановить камеру, отозвать URL) |

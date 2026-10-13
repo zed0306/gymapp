@@ -8,7 +8,7 @@
 //   actions   — { name: (dataset, el, event) => void }   клики по [data-act="name"]
 //   binds     — { name: (value, dataset, el) => void }    ввод в input[data-bind="name"]
 //   slots     — { slotName: () => html }     вставки в чужие экраны (см. SLOTS в app.js)
-//   foods     — () => [{ id, name, k, p, f, c, unit?, unitName? }]  доп. продукты для дневника
+//   foods     — () => [{ id, name, k, p, f, c, unit?, unitName? }]  доп. продукты для дневника (unitName — строка или [one, few, many])
 //   on        — { event: (payload) => void } события: boot, workout, water, food, weight, profile, …
 //   mount     — (root) => void               после каждой отрисовки (графики, камера и т. п.)
 //   unmount   — () => void                   перед каждой отрисовкой (остановить камеру и т. п.)

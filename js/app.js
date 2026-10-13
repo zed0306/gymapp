@@ -985,6 +985,13 @@ function foodCalc(f, g) {
   return [f.k * k, f.p * k, f.f * k, f.c * k];
 }
 
+// «2 порции», «3 ломтика»; сокращения («шт», «ст. л.») не склоняются. unitName может быть и [one, few, many]
+const UNIT_FORMS = { 'порция': ['порция', 'порции', 'порций'], 'ломтик': ['ломтик', 'ломтика', 'ломтиков'] };
+function unitLabel(n, name) {
+  const forms = Array.isArray(name) ? name : UNIT_FORMS[name];
+  return forms ? plural(n, ...forms) : esc(String(name || ''));
+}
+
 function foodSheet({ id }) {
   const f = findFood(id);
   if (!f) return '<div class="empty">Продукт не найден</div>';
@@ -993,7 +1000,7 @@ function foodSheet({ id }) {
   return `<div class="h2">${esc(f.name)}</div>
     <div class="sub small" style="margin-top:4px">на 100 г: ${fmt(f.k)} ккал · Б ${fmt(f.p, 1)} · Ж ${fmt(f.f, 1)} · У ${fmt(f.c, 1)}</div>
     <div class="field" style="background:var(--surface-2);margin-top:14px"><label>Сколько грамм</label>${stepper('foodGrams', g, 'г', 10)}</div>
-    ${f.unit ? `<div class="chips" style="margin-top:10px">${[1, 2, 3].map((x) => `<button class="chip" data-act="foodUnit" data-g="${f.unit * x}">${x} ${f.unitName} · ${f.unit * x} г</button>`).join('')}</div>` : ''}
+    ${f.unit ? `<div class="chips" style="margin-top:10px">${[1, 2, 3].map((x) => `<button class="chip" data-act="foodUnit" data-g="${f.unit * x}">${x} ${unitLabel(x, f.unitName)} · ${f.unit * x} г</button>`).join('')}</div>` : ''}
     <div class="card" style="background:var(--surface-2);margin-top:12px" id="food-calc">${foodCalcHtml(k, p, fa, c)}</div>
     <button class="btn block" style="margin-top:14px" data-act="addFood" data-id="${f.id}">${icon('plus')} Добавить</button>`;
 }

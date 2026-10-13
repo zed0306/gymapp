@@ -129,7 +129,20 @@
 .bc-code-row .btn { height: 50px; padding: 0 18px; border-radius: 14px; flex: none; }
 .bc-manual .err:empty { display: none; }
 
-.bc-ico { width: 40px; height: 40px; border-radius: 12px; color: var(--text-2); }
+/* ── Недавно сканировал ────────────────────────────── */
+.bc-ico { width: 40px; height: 40px; border-radius: 12px; color: var(--text-2); flex: none; }
+.bc-per100 { font-weight: 700; }
+/* Имя — до двух строк: два похожих продукта («Протеиновый батончик …») различимы */
+.bc-rname {
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.bc-rmac { margin-top: 3px; }
+.bc-rk { flex: none; display: flex; align-items: baseline; gap: 4px; }
 
 /* ── Спиннер ───────────────────────────────────────── */
 .bc-spin {
@@ -243,6 +256,9 @@
   .bc-code-row .btn { padding: 0 14px; }
   .bc-pick { font-size: 14px; gap: 6px; padding: 0 8px; }
   .bc-status { left: 10px; right: 10px; padding: 8px 12px; }
+  /* Узко: место под имя важнее иконки */
+  .bc-recent .bc-ico { display: none; }
+  .bc-recent .list-item { gap: 10px; }
 }
 
 /* Низкие экраны (мини-апп в Telegram на маленьком телефоне): шторка продукта компактнее */

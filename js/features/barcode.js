@@ -12,8 +12,13 @@ export const MAX_JSON = 4096;
 const NAME_MAX = 40;
 const OFF_API = 'https://world.openfoodfacts.org/api/v2/product/';
 const OFF_FIELDS = 'code,product_name,product_name_ru,generic_name,brands,quantity,serving_quantity,serving_size,image_front_small_url,nutriments';
-const ZXING_URL = 'https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js';
+// Два зеркала одного и того же файла: хэш (SRI) у них совпадает, второе — если первое недоступно
+const ZXING_URLS = [
+  'https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js',
+  'https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js',
+];
 const ZXING_SRI = 'sha384-BzBxP10ZE72aitqj5UMmUsbKFliP/DZqA8Wq+BNNhlIJDGoEd1tpkMYXOg9+n6sB';
+const ZXING_TIMEOUT = 15000; // на одно зеркало
 const FORMATS = ['ean_13', 'ean_8', 'upc_a', 'upc_e'];
 const LOOKUP_TIMEOUT = 10000;
 const REPEAT_MS = 3000; // тот же код подряд не обрабатываем, пока он не пропадёт из кадра на 3 с
@@ -182,6 +187,15 @@ const st = {
   codeErr: '',
   photo: 'idle', // idle | busy | fail | noengine
 };
+
+// Состояние экрана сканера — с чистого листа (при уходе с экрана, входе и сбросе данных)
+function resetScreen() {
+  if (!stream && st.cam !== 'starting') st.cam = 'idle';
+  st.photo = 'idle';
+  st.code = '';
+  st.codeErr = '';
+  st.hint = false;
+}
 const cache = new Map(); // code → {status: 'loading'|'ok'|'notfound'|'error', food}
 const drafts = {}; // code → {name, k, p, f, c} — форма «вручную»
 const mode = {}; // code → 'form' (принудительно показать форму)
@@ -201,9 +215,14 @@ let seen = { code: '', at: 0 };
 let engine = null; // 'native' | 'zxing'
 let nativeState = null; // null — не проверяли, true/false
 let detector = null;
+let zxSrcPromise = null; // исходник ZXing (текст), проверенный по хэшу
 let zxPromise = null;
-let zx = null; // {Z, fast, hard} — два ридера ZXing
+let zx = null; // {Z, fast, hard} — два ридера ZXing в главном потоке (кадры камеры)
+let worker = null; // {w, ready, jobs, seq, abort} — распознавание фото в фоновом потоке
+let workerBroken = false; // воркер не завёлся — фото распознаём в главном потоке
 let canvas = null;
+let epoch = 0; // растёт при «Сбросить данные»: поздние ответы OFF уже ничего не пишут
+const inflight = new Set(); // AbortController текущих запросов к OFF
 
 const esc = (s) => ctx.esc(s);
 const icon = (n, c) => ctx.icon(n, c);
@@ -217,11 +236,24 @@ function saveMy(food) {
 
 // ── Камера ───────────────────────────────────────────
 
-const sheetOpen = () => !!document.querySelector('#app .sheet');
+const sheetOpen = () => !!ctx.sheet?.();
+
+// Мини-апп свёрнут или во вкладке Telegram, которая сейчас не активна (Bot API 8.0+: события
+// activated/deactivated). WebView при этом может оставаться «видимым» для document.hidden.
+// У старых клиентов isActive нет — считаем активным.
+const tgActive = () => ctx.tg?.isActive !== false;
+const canRun = () => !document.hidden && tgActive();
+
+// Камеру сейчас включать нельзя (вкладка скрыта / мини-апп свёрнут) — пауза до возвращения
+function pauseCam() {
+  if (stream || st.cam === 'starting') stopCam();
+  setCam('paused');
+}
 
 async function startCam() {
   if (stream || st.cam === 'starting') return;
   if (!navigator.mediaDevices?.getUserMedia) { setCam('unsupported'); return; }
+  if (!canRun()) { pauseCam(); return; }
   const token = ++camToken;
   setCam('starting');
   try {
@@ -230,8 +262,12 @@ async function startCam() {
       audio: false,
     });
     // Пока ждали разрешения, ушли с экрана или свернули приложение — сразу гасим
-    if (token !== camToken || !onScreen || document.hidden) {
+    if (token !== camToken || !onScreen || !canRun()) {
       s.getTracks().forEach((t) => t.stop());
+      if (token === camToken) {
+        stopCam(); // 'starting' → 'idle'
+        if (onScreen) setCam('paused'); // включим, когда приложение снова станет активным
+      }
       return;
     }
     stream = s;
@@ -320,37 +356,169 @@ async function nativeOk() {
   }
 }
 
+// Текст ZXing: зеркала по очереди, каждое — с проверкой хэша (fetch integrity) и своим таймаутом.
+// Один и тот же текст идёт и в главный поток (камера), и в воркер (фото) — качаем один раз.
+function zxSource() {
+  if (zxSrcPromise) return zxSrcPromise;
+  zxSrcPromise = (async () => {
+    for (const url of ZXING_URLS) {
+      const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+      const timer = setTimeout(() => ctrl?.abort(), ZXING_TIMEOUT);
+      try {
+        const res = await fetch(url, { integrity: ZXING_SRI, mode: 'cors', credentials: 'omit', signal: ctrl?.signal });
+        if (res.ok) {
+          const src = await res.text();
+          if (src.length > 1000) return src;
+        }
+      } catch { /* недоступно или не тот файл — следующее зеркало */ } finally {
+        clearTimeout(timer);
+      }
+    }
+    throw new Error('zxing load');
+  })();
+  zxSrcPromise.catch(() => { zxSrcPromise = null; }); // в следующий раз попробуем снова
+  return zxSrcPromise;
+}
+
+// Фоновая загрузка, пока человек целится камерой или делает снимок: первое фото не ждёт сеть
+function preloadEngine() {
+  nativeOk().then((ok) => { if (!ok && onScreen) zxSource().catch(() => {}); });
+}
+
+function zxReaders(Z) {
+  const formats = [Z.BarcodeFormat.EAN_13, Z.BarcodeFormat.EAN_8, Z.BarcodeFormat.UPC_A, Z.BarcodeFormat.UPC_E];
+  const reader = (tryHard) => {
+    const r = new Z.MultiFormatReader();
+    const hints = new Map([[Z.DecodeHintType.POSSIBLE_FORMATS, formats]]);
+    if (tryHard) hints.set(Z.DecodeHintType.TRY_HARDER, true);
+    r.setHints(hints);
+    return r;
+  };
+  // fast — для кадров с камеры, hard — тщательнее (и с поворотом), но заметно дольше
+  return { Z, fast: reader(false), hard: reader(true) };
+}
+
+// ZXing в главном потоке — для кадров с камеры (и для фото, если воркер не завёлся)
 function loadZXing() {
   if (zx) return Promise.resolve(zx);
   if (zxPromise) return zxPromise;
-  zxPromise = new Promise((resolve, reject) => {
-    if (window.ZXing?.MultiFormatReader) { resolve(window.ZXing); return; }
-    const s = document.createElement('script');
-    s.src = ZXING_URL;
-    s.async = true;
-    s.crossOrigin = 'anonymous';
-    s.integrity = ZXING_SRI;
-    const timer = setTimeout(() => reject(new Error('zxing timeout')), 20000);
-    s.onload = () => { clearTimeout(timer); window.ZXing?.MultiFormatReader ? resolve(window.ZXing) : reject(new Error('zxing missing')); };
-    s.onerror = () => { clearTimeout(timer); s.remove(); reject(new Error('zxing load')); };
-    document.head.appendChild(s);
-  }).then((Z) => {
-    const formats = [Z.BarcodeFormat.EAN_13, Z.BarcodeFormat.EAN_8, Z.BarcodeFormat.UPC_A, Z.BarcodeFormat.UPC_E];
-    const reader = (tryHard) => {
-      const r = new Z.MultiFormatReader();
-      const hints = new Map([[Z.DecodeHintType.POSSIBLE_FORMATS, formats]]);
-      if (tryHard) hints.set(Z.DecodeHintType.TRY_HARDER, true);
-      r.setHints(hints);
-      return r;
-    };
-    // fast — для кадров с камеры, hard — для фото (дольше, зато ищет тщательнее)
-    zx = { Z, fast: reader(false), hard: reader(true) };
+  zxPromise = (async () => {
+    if (!window.ZXing?.MultiFormatReader) {
+      const src = await zxSource();
+      const url = URL.createObjectURL(new Blob([src], { type: 'text/javascript' }));
+      try {
+        await new Promise((resolve, reject) => {
+          const s = document.createElement('script');
+          s.src = url;
+          s.onload = resolve;
+          s.onerror = () => { s.remove(); reject(new Error('zxing load')); };
+          document.head.appendChild(s);
+        });
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+      if (!window.ZXing?.MultiFormatReader) throw new Error('zxing missing');
+    }
+    zx = zxReaders(window.ZXing);
     return zx;
-  }).catch((e) => {
-    zxPromise = null;
+  })();
+  zxPromise.catch(() => { zxPromise = null; });
+  return zxPromise;
+}
+
+// Воркер для фото: тщательный поиск по 12-Мп снимку занимает секунды на среднем телефоне —
+// в главном потоке это замораживало интерфейс и кнопку «Назад» Telegram.
+// Код воркера приклеивается к тексту ZXing в одном Blob (хэш ZXing уже проверен).
+const WORKER_SRC = `
+;(function () {
+  var Z = self.ZXing, F = Z.BarcodeFormat;
+  function reader(hard) {
+    var r = new Z.MultiFormatReader();
+    var h = new Map([[Z.DecodeHintType.POSSIBLE_FORMATS, [F.EAN_13, F.EAN_8, F.UPC_A, F.UPC_E]]]);
+    if (hard) h.set(Z.DecodeHintType.TRY_HARDER, true);
+    r.setHints(h);
+    return r;
+  }
+  var fast = reader(false), hard = reader(true);
+  function decode(lum, w, h, r) {
+    try {
+      var res = r.decodeWithState(new Z.BinaryBitmap(new Z.HybridBinarizer(new Z.RGBLuminanceSource(lum, w, h))));
+      return { text: res.getText(), format: String(F[res.getBarcodeFormat()] || '').toLowerCase() };
+    } catch (e) { return null; }
+  }
+  self.onmessage = function (e) {
+    var d = e.data, w = d.w, h = d.h, n = w * h, px = new Uint8ClampedArray(d.buf), lum = new Uint8ClampedArray(n);
+    for (var i = 0, j = 0; j < n; i += 4, j++) lum[j] = px[i + 3] === 0 ? 255 : (px[i] * 306 + px[i + 1] * 601 + px[i + 2] * 117 + 512) >> 10;
+    var out = decode(lum, w, h, d.hard ? hard : fast);
+    if (!out && d.hard) {
+      // RGBLuminanceSource не умеет поворот (у канваса в главном потоке он есть) — повернём сами:
+      // код могли снять боком
+      var rot = new Uint8ClampedArray(n);
+      for (var y = 0; y < h; y++) for (var x = 0; x < w; x++) rot[(w - 1 - x) * h + y] = lum[y * w + x];
+      out = decode(rot, h, w, hard);
+    }
+    self.postMessage({ id: d.id, res: out });
+  };
+  self.postMessage({ ready: true });
+})();`;
+
+function getWorker() {
+  if (worker) return worker.ready;
+  if (workerBroken || typeof Worker !== 'function' || typeof Blob !== 'function') return Promise.resolve(null);
+  const wk = { w: null, jobs: new Map(), seq: 0, abort: null };
+  worker = wk;
+  const ready = zxSource().then((src) => new Promise((resolve, reject) => {
+    if (worker !== wk) { resolve(null); return; } // пока качали, ушли с экрана
+    wk.abort = () => resolve(null);
+    let url = '';
+    const fail = () => {
+      clearTimeout(timer);
+      if (url) URL.revokeObjectURL(url);
+      killWorker(wk);
+      workerBroken = true;
+      reject(new Error('worker'));
+    };
+    const timer = setTimeout(fail, 10000);
+    try {
+      url = URL.createObjectURL(new Blob([src, WORKER_SRC], { type: 'text/javascript' }));
+      wk.w = new Worker(url);
+    } catch { fail(); return; }
+    wk.w.onmessage = (e) => {
+      const d = e.data || {};
+      if (d.ready) { clearTimeout(timer); URL.revokeObjectURL(url); url = ''; resolve(wk); return; }
+      const job = wk.jobs.get(d.id);
+      if (job) { wk.jobs.delete(d.id); job(d.res || null); }
+    };
+    // Ошибка до «ready» — воркер не завёлся; после — упал на снимке. В обоих случаях дальше без него
+    wk.w.onerror = (e) => { e.preventDefault?.(); fail(); };
+  }));
+  // Сеть: ошибку отдаём наверх («не загрузилось распознавание»); воркер: молча в главный поток.
+  // null — воркера нет (не завёлся или его уже остановили)
+  wk.ready = ready.catch((e) => {
+    if (worker === wk) worker = null;
+    if (e?.message === 'worker') return null;
     throw e;
   });
-  return zxPromise;
+  return wk.ready;
+}
+
+// Остановить воркер (ушли со сканера): текущее распознавание прерывается сразу
+function killWorker(wk = worker) {
+  if (!wk) return;
+  if (worker === wk) worker = null;
+  try { wk.w?.terminate(); } catch { /* уже остановлен */ }
+  for (const job of wk.jobs.values()) job(null);
+  wk.jobs.clear();
+  wk.abort?.();
+}
+
+function workerDecode(wk, w, h, buf, hard) {
+  return new Promise((resolve) => {
+    if (!wk.w || worker !== wk) { resolve(null); return; }
+    const id = ++wk.seq;
+    wk.jobs.set(id, resolve);
+    wk.w.postMessage({ id, w, h, buf, hard }, [buf]);
+  });
 }
 
 async function prepareEngine() {
@@ -494,7 +662,12 @@ async function loadImage(file) {
 
 const yieldUI = () => new Promise((r) => setTimeout(r, 0));
 
-// Распознать код на фото: BarcodeDetector по ImageBitmap или ZXing по канвасу в нескольких масштабах.
+// Проходы по фото: сначала быстрые (без TRY_HARDER, дёшево — чёткий код находится сразу),
+// потом тщательные (все строки + поворот). Повтор того же размера и режима пропускаем.
+const PHOTO_PASSES = [[800, false], [1280, false], [800, true], [1280, true], [1800, true]];
+
+// Распознать код на фото: BarcodeDetector по ImageBitmap или ZXing (в воркере; если его нет —
+// в главном потоке) по канвасу в нескольких масштабах.
 // alive() → false — результат уже не нужен (ушли с экрана, выбрали другое фото): бросаем работу.
 async function decodeFile(file, alive = () => true) {
   if (await nativeOk()) {
@@ -509,7 +682,9 @@ async function decodeFile(file, alive = () => true) {
       return null;
     } catch { /* упадём на ZXing */ }
   }
-  await loadZXing();
+  let wk = await getWorker(); // сеть недоступна → исключение «zxing load»
+  if (!alive()) return null;
+  if (!wk) await loadZXing();
   if (!alive()) return null;
   const img = await loadImage(file);
   try {
@@ -518,17 +693,36 @@ async function decodeFile(file, alive = () => true) {
     if (!w || !h) return null;
     const cv = document.createElement('canvas'); // свой канвас: цикл камеры может работать параллельно
     const g = cv.getContext('2d', { willReadFrequently: true });
-    // От быстрого к тщательному; между масштабами отдаём управление, чтобы интерфейс не замирал
-    for (const max of [800, 1280, 1800]) {
+    const done = new Set();
+    for (const [max, hard] of PHOTO_PASSES) {
+      const k = Math.min(1, max / Math.max(w, h));
+      const cw = Math.round(w * k);
+      const ch = Math.round(h * k);
+      const key = `${cw}x${ch}:${hard}`;
+      if (done.has(key)) continue;
+      done.add(key);
+      // Между проходами отдаём управление: интерфейс отвечает, «Назад» срабатывает сразу
       await yieldUI();
       if (!alive()) return null;
-      const k = Math.min(1, max / Math.max(w, h));
-      cv.width = Math.round(w * k);
-      cv.height = Math.round(h * k);
-      g.drawImage(img, 0, 0, cv.width, cv.height);
-      const code = zxDecode(cv, true);
+      if (wk && worker !== wk) {
+        // Воркер упал на снимке — доделаем в главном потоке
+        wk = null;
+        await loadZXing();
+        if (!alive()) return null;
+      }
+      cv.width = cw;
+      cv.height = ch;
+      g.drawImage(img, 0, 0, cw, ch);
+      let code = null;
+      if (wk) {
+        const res = await workerDecode(wk, cw, ch, g.getImageData(0, 0, cw, ch).data.buffer, hard);
+        if (!alive()) return null;
+        code = res ? normBarcode(res.text, res.format) : null;
+        if (!validBarcode(code)) code = null;
+      } else {
+        code = zxDecode(cv, hard);
+      }
       if (code) return code;
-      if (k === 1) break;
     }
     return null;
   } finally {
@@ -570,7 +764,9 @@ async function lookup(code) {
   const cur = cache.get(code);
   if (cur && cur.status !== 'error') return;
   cache.set(code, { status: 'loading' });
+  const ep = epoch;
   const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+  if (ctrl) inflight.add(ctrl);
   const timer = setTimeout(() => ctrl?.abort(), LOOKUP_TIMEOUT);
   let entry;
   try {
@@ -587,7 +783,10 @@ async function lookup(code) {
     entry = { status: 'error' };
   } finally {
     clearTimeout(timer);
+    if (ctrl) inflight.delete(ctrl);
   }
+  // Пока ждали ответ, человек сбросил все данные — ничего не записываем
+  if (ep !== epoch) return;
   cache.set(code, entry);
   if (entry.status === 'ok' && !entry.food.incomplete) saveMy(entry.food);
   if (entry.status === 'ok' && entry.food.incomplete) {
@@ -618,6 +817,7 @@ const CAM_OFF = {
 };
 
 function statusText() {
+  if (st.cam === 'paused') return 'Камера на паузе';
   if (st.cam === 'starting') return 'Включаем камеру…';
   if (st.cam === 'live' && !engine) return 'Готовим распознавание…';
   if (st.hint) return st.torchOk ? 'Поднеси ближе или включи фонарик' : 'Поднеси ближе и держи ровно';
@@ -639,7 +839,7 @@ function camInner() {
   return `<div class="bc-view ${live ? 'live' : 'wait'}">
     <video data-bc-video playsinline muted autoplay></video>
     <div class="bc-frame" data-bc-frame><i class="tl"></i><i class="tr"></i><i class="bl"></i><i class="br"></i>${live ? '<div class="bc-scan"><div></div></div>' : ''}</div>
-    ${live ? '' : '<div class="bc-spin light"></div>'}
+    ${live || st.cam === 'paused' ? '' : '<div class="bc-spin light"></div>'}
     ${live && st.torchOk ? `<button class="bc-torch ${st.torch ? 'on' : ''}" data-act="bcTorch" aria-label="Фонарик">${icon('bolt')}</button>` : ''}
     <div class="bc-status" data-bc-status>${statusText()}</div>
   </div>`;
@@ -668,11 +868,13 @@ function photoInner() {
 function recentHtml() {
   const list = myList().slice(0, 5);
   if (!list.length) return '';
-  return `<div class="section-title"><div class="h3">Недавно сканировал</div></div>
+  // «на 100 г» — один раз в заголовке; пары «Б 7,5» не разрываются переносом; имя — в две строки
+  const pair = (l, v) => `<span class="bc-nw">${l} ${fmt1(v)}</span>`;
+  return `<div class="section-title"><div class="h3">Недавно сканировал</div><span class="tiny muted bc-per100">на 100 г</span></div>
     <div class="card list bc-recent">${list.map((x) => `<button class="list-item" data-act="bcOpenCode" data-code="${esc(x.code)}">
       <div class="icon-box bc-ico">${icon('barcode', 'sm')}</div>
-      <div class="grow"><div class="h3 ellipsis">${esc(x.name)}</div><div class="sub small num">на 100 г: Б ${fmt1(x.p)} · Ж ${fmt1(x.f)} · У ${fmt1(x.c)}</div></div>
-      <b class="num">${ctx.fmt(x.k)}</b><span class="muted small">ккал</span></button>`).join('')}</div>`;
+      <div class="grow"><div class="h3 bc-rname">${esc(x.name)}</div><div class="sub small num bc-rmac">${pair('Б', x.p)} · ${pair('Ж', x.f)} · ${pair('У', x.c)}</div></div>
+      <span class="bc-rk"><b class="num">${ctx.fmt(x.k)}</b><span class="muted small">ккал</span></span></button>`).join('')}</div>`;
 }
 
 function scanScreen() {
@@ -902,19 +1104,21 @@ function saveManual(code) {
 function install() {
   if (installed || typeof document === 'undefined') return;
   installed = true;
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      if (stream || st.cam === 'starting') { stopCam(); st.cam = 'paused'; }
-    } else if (onScreen && st.cam === 'paused') {
+  // Вкладку скрыли или мини-апп свернули / увели в неактивную вкладку Telegram — камеру гасим;
+  // вернулись на сканер — включаем снова
+  const away = () => { if (stream || st.cam === 'starting') pauseCam(); };
+  const back = () => {
+    if (onScreen && st.cam === 'paused' && canRun()) {
       st.cam = 'idle';
       startCam();
     }
-  });
+  };
+  document.addEventListener('visibilitychange', () => (document.hidden ? away() : back()));
+  try {
+    ctx.tg?.onEvent?.('deactivated', away);
+    ctx.tg?.onEvent?.('activated', back);
+  } catch { /* старый клиент Telegram */ }
   window.addEventListener('pagehide', () => stopCam());
-  // Кнопки ± у ctx.stepper вызывают только биндинги ядра — пересчитываем сами (после ядра)
-  document.addEventListener('click', (e) => {
-    if (e.target.closest?.('[data-act="step"][data-bind="bcGrams"]')) recalc();
-  });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && e.target.closest?.('input[data-bind="bcCode"]')) {
       e.preventDefault();
@@ -1015,38 +1219,46 @@ export default {
 
   on: {
     reset: () => {
+      // Запросы, которые ещё идут, отменяем, а их поздние ответы отбрасываем (epoch)
+      epoch++;
+      for (const c of inflight) { try { c.abort(); } catch { /* уже завершён */ } }
+      inflight.clear();
       cache.clear();
       for (const o of [drafts, mode, gramsBy]) for (const k of Object.keys(o)) delete o[k];
-      st.code = '';
-      st.codeErr = '';
+      resetScreen();
     },
   },
 
   mount(root) {
     install();
     const on = ctx.current?.()?.name === 'bcScan';
-    if (on && !onScreen) {
-      // Вошли на экран: всё с чистого листа
-      st.cam = 'idle';
-      st.photo = 'idle';
-      st.code = '';
-      st.codeErr = '';
-      st.hint = false;
-    }
     if (!on && (onScreen || stream || st.cam === 'starting')) {
+      // Ушли со сканера: камеру и распознавание фото останавливаем, состояние экрана сбрасываем
+      // сразу — следующий render() при входе соберёт чистую разметку
       stopCam();
-      st.cam = 'idle';
+      killWorker();
+      resetScreen();
     }
     // Вошли или ушли — фото, которое ещё распознаётся, больше не открывает шторку
     if (on !== onScreen) photoToken++;
+    const entered = on && !onScreen;
     onScreen = on;
     if (!on) { sheetWasOpen = false; return; }
-    const open = !!root.querySelector('.sheet');
+    if (entered) {
+      // Вошли: всё с чистого листа. Если что-то поменялось, пока экрана не было, — поправим DOM
+      resetScreen();
+      paintPhoto();
+      const input = root.querySelector('input[data-bind="bcCode"]');
+      if (input) input.value = '';
+      setCodeErr('');
+      preloadEngine();
+    }
+    const open = sheetOpen();
     // Шторку закрыли — код, который всё ещё в кадре, не открываем заново сразу же
     if (sheetWasOpen && !open && seen.code) seen.at = Date.now();
     sheetWasOpen = open;
     attachVideo(root);
-    if (st.cam === 'idle' && !document.hidden) startCam();
+    if (st.cam === 'idle') startCam(); // вкладка скрыта или мини-апп свёрнут — startCam поставит паузу
     else if (st.cam === 'live' && stream) startLoop();
   },
 };
